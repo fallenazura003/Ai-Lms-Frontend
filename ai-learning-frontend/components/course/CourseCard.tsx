@@ -1,0 +1,234 @@
+'use client';
+
+import React, { useState } from 'react';
+import Image from 'next/image';
+import {
+    Book, LoaderCircle, PlayCircle, Settings, DollarSign, Trash2, Edit, BookOpen,
+    Eye, EyeOff // Import thêm icon Eye và EyeOff
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import api from '@/lib/api';
+import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+interface CourseProps {
+    course: {
+        id: string;
+        title: string;
+        description: string;
+        price: number;
+        imageUrl: string;
+        creatorName: string;
+        createdAt: string;
+        visible: boolean; // Đảm bảo có thuộc tính visible
+    };
+    isEnrolled?: boolean;
+    userRole?: 'STUDENT' | 'TEACHER' | 'ADMIN' | null;
+    onCourseActionSuccess?: () => void;
+}
+
+export default function CourseCard({ course, isEnrolled, userRole, onCourseActionSuccess }: CourseProps) {
+    const [loading, setLoading] = useState(false); // Có vẻ không được sử dụng, có thể xóa nếu không cần
+    const [loadingDelete, setLoadingDelete] = useState(false);
+    const [loadingToggleVisibility, setLoadingToggleVisibility] = useState(false); // Thêm state cho nút ẩn/hiện
+    const [currentCourseVisibility, setCurrentCourseVisibility] = useState(course.visible); // State để quản lý visible ngay lập tức
+
+    const getFullImageUrl = (path: string | undefined | null) => {
+        if (!path || path.trim() === "") {
+            return "https://foundr.com/wp-content/uploads/2021/09/Best-online-course-platforms.png";
+        }
+        if (path.startsWith('/uploads/')) {
+            return `http://localhost:8080${path}`;
+        }
+        return path;
+    };
+
+    const handleDeleteCourse = async () => {
+        setLoadingDelete(true);
+        try {
+            await api.delete(`/teacher/courses/${course.id}`);
+            toast.success('Khóa học đã được xóa thành công!');
+            if (onCourseActionSuccess) {
+                onCourseActionSuccess();
+            }
+        } catch (error) {
+            console.error('Lỗi khi xóa khóa học:', error);
+            toast.error('Có lỗi xảy ra khi xóa khóa học.');
+        } finally {
+            setLoadingDelete(false);
+        }
+    };
+
+    // ✅ Hàm xử lý ẩn/hiện khóa học
+    const handleToggleVisibility = async () => {
+        setLoadingToggleVisibility(true);
+        try {
+            // Gửi yêu cầu PATCH đến API để cập nhật trạng thái `visible`
+            const newVisibility = !currentCourseVisibility;
+            await api.patch(`/teacher/courses/${course.id}/toggle-visibility`, {
+                visible: newVisibility, // Gửi trạng thái mong muốn
+            });
+            setCurrentCourseVisibility(newVisibility); // Cập nhật trạng thái ngay lập tức trên UI
+            toast.success(newVisibility ? 'Khóa học đã được hiển thị!' : 'Khóa học đã được ẩn!');
+            if (onCourseActionSuccess) {
+                onCourseActionSuccess(); // Gọi lại để refresh danh sách nếu cần
+            }
+        } catch (error) {
+            console.error('Lỗi khi cập nhật trạng thái hiển thị:', error);
+            toast.error('Có lỗi xảy ra khi cập nhật trạng thái hiển thị.');
+        } finally {
+            setLoadingToggleVisibility(false);
+        }
+    };
+
+    return (
+        <div className="shadow-lg rounded-xl overflow-hidden bg-white hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1 flex flex-col h-full">
+            <div className="relative w-full h-[200px] flex-shrink-0">
+                <Image
+                    src={getFullImageUrl(course?.imageUrl)}
+                    alt={course?.title || 'Course Image'}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    priority
+                    className="rounded-t-xl object-cover"
+                />
+            </div>
+
+            <div className="p-4 flex flex-col flex-grow">
+                <div className="flex-shrink-0" style={{ height: '90px' }}>
+                    <h2 className="font-bold text-xl text-gray-800 line-clamp-2 mb-1" title={course?.title}>
+                        {course?.title}
+                    </h2>
+                    <p className="line-clamp-3 text-gray-600 text-sm">{course?.description}</p>
+                </div>
+
+                <div className="flex flex-col flex-grow justify-end gap-3 mt-10">
+                    <div className="flex items-center justify-between text-gray-700">
+                        <h2 className="flex items-center gap-2">
+                            <Book className="text-primary h-5 w-5" />
+                            Số bài học: N/A {/* Cần cập nhật số bài học thực tế, có thể fetch từ API */}
+                        </h2>
+                        <h2 className="flex items-center gap-2 text-green-600 font-semibold">
+                            <DollarSign className="h-5 w-5" />
+                            {course.price === 0 ? 'Miễn phí' : `${course.price} VNĐ`}
+                        </h2>
+                    </div>
+
+                    {/* ✅ Hiển thị trạng thái ẩn/hiện nếu là giáo viên */}
+                    {userRole === 'TEACHER' && (
+                        <div className="flex items-center justify-end text-sm mt-1">
+                            {currentCourseVisibility ? (
+                                <span className="text-green-600 flex items-center gap-1">
+                                    <Eye className="h-4 w-4" /> Đang hiển thị
+                                </span>
+                            ) : (
+                                <span className="text-red-500 flex items-center gap-1">
+                                    <EyeOff className="h-4 w-4" /> Đang ẩn
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+
+                    <div className="flex flex-col gap-2">
+                        {userRole === 'STUDENT' && (
+                            isEnrolled ? (
+                                <Link href={`/student/courses/${course.id}`} passHref>
+                                    <Button className="w-full" variant="secondary">
+                                        <PlayCircle className="mr-2 h-5 w-5" /> Tiếp tục học
+                                    </Button>
+                                </Link>
+                            ) : (
+                                <Link href={`/student/courses/${course.id}`} passHref>
+                                    <Button className="w-full">
+                                        <PlayCircle className="mr-2 h-5 w-5" /> Xem chi tiết
+                                    </Button>
+                                </Link>
+                            )
+                        )}
+
+                        {userRole === 'TEACHER' && (
+                            <>
+                                <Link href={`/teacher/courses/${course.id}/lessons`} passHref>
+                                    <Button className="w-full" variant="default">
+                                        <BookOpen className="mr-2 h-5 w-5" /> Quản lý bài học
+                                    </Button>
+                                </Link>
+
+                                <Link href={`/teacher/courses/${course.id}/edit`} passHref>
+                                    <Button className="w-full" variant="outline">
+                                        <Edit className="mr-2 h-5 w-5" /> Sửa khóa học
+                                    </Button>
+                                </Link>
+
+                                {/* ✅ Nút Ẩn/Hiện khóa học */}
+                                <Button
+                                    onClick={handleToggleVisibility}
+                                    className="w-full"
+                                    variant={currentCourseVisibility ? "outline" : "default"} // Nút ẩn thì màu default, nút hiện thì màu outline
+                                    disabled={loadingToggleVisibility}
+                                >
+                                    {loadingToggleVisibility ? (
+                                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : currentCourseVisibility ? (
+                                        <EyeOff className="mr-2 h-5 w-5" />
+                                    ) : (
+                                        <Eye className="mr-2 h-5 w-5" />
+                                    )}
+                                    {currentCourseVisibility ? 'Ẩn khóa học' : 'Hiển thị khóa học'}
+                                </Button>
+
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button className="w-full" variant="destructive" disabled={loadingDelete}>
+                                            {loadingDelete ? (
+                                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="mr-2 h-5 w-5" />
+                                            )}
+                                            Xóa khóa học
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Hành động này không thể hoàn tác. Thao tác này sẽ xóa vĩnh viễn khóa học <span className="font-bold text-primary">"{course.title}"</span> và tất cả các bài học liên quan.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleDeleteCourse} disabled={loadingDelete}>
+                                                {loadingDelete && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                                Xóa
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </>
+                        )}
+
+                        {userRole === 'ADMIN' && (
+                            <Link href={`/admin/courses/${course.id}/edit`} passHref>
+                                <Button className="w-full" variant="outline">
+                                    <Settings className="mr-2 h-5 w-5" /> Chỉnh sửa khóa học
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

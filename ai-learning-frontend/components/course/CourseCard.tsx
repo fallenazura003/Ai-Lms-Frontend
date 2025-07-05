@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
     Book, LoaderCircle, PlayCircle, Settings, DollarSign, Trash2, Edit, BookOpen,
-    Eye, EyeOff // Import thêm icon Eye và EyeOff
+    Eye, EyeOff, Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ interface CourseProps {
         imageUrl: string;
         creatorName: string;
         createdAt: string;
-        visible: boolean; // Đảm bảo có thuộc tính visible
+        visible: boolean;
     };
     isEnrolled?: boolean;
     userRole?: 'STUDENT' | 'TEACHER' | 'ADMIN' | null;
@@ -39,14 +39,29 @@ interface CourseProps {
 }
 
 export default function CourseCard({ course, isEnrolled, userRole, onCourseActionSuccess }: CourseProps) {
-    const [loading, setLoading] = useState(false); // Có vẻ không được sử dụng, có thể xóa nếu không cần
     const [loadingDelete, setLoadingDelete] = useState(false);
-    const [loadingToggleVisibility, setLoadingToggleVisibility] = useState(false); // Thêm state cho nút ẩn/hiện
-    const [currentCourseVisibility, setCurrentCourseVisibility] = useState(course.visible); // State để quản lý visible ngay lập tức
+    const [loadingToggleVisibility, setLoadingToggleVisibility] = useState(false);
+    const [currentCourseVisibility, setCurrentCourseVisibility] = useState(course.visible);
+    const [averageRatingState, setAverageRatingState] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (userRole !== 'STUDENT') return;
+
+        const fetchRating = async () => {
+            try {
+                const res = await api.get(`/student/courses/${course.id}/rating/average`);
+                setAverageRatingState(typeof res.data === 'number' ? res.data : null);
+            } catch (error) {
+                console.error("Không thể lấy điểm đánh giá trung bình:", error);
+            }
+        };
+
+        fetchRating();
+    }, [course.id, userRole]);
 
     const getFullImageUrl = (path: string | undefined | null) => {
-        if (!path || path.trim() === "") {
-            return "https://foundr.com/wp-content/uploads/2021/09/Best-online-course-platforms.png";
+        if (!path || path.trim() === '') {
+            return 'https://foundr.com/wp-content/uploads/2021/09/Best-online-course-platforms.png';
         }
         if (path.startsWith('/uploads/')) {
             return `http://localhost:8080${path}`;
@@ -59,33 +74,25 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
         try {
             await api.delete(`/teacher/courses/${course.id}`);
             toast.success('Khóa học đã được xóa thành công!');
-            if (onCourseActionSuccess) {
-                onCourseActionSuccess();
-            }
-        } catch (error) {
-            console.error('Lỗi khi xóa khóa học:', error);
+            onCourseActionSuccess?.();
+        } catch {
             toast.error('Có lỗi xảy ra khi xóa khóa học.');
         } finally {
             setLoadingDelete(false);
         }
     };
 
-    // ✅ Hàm xử lý ẩn/hiện khóa học
     const handleToggleVisibility = async () => {
         setLoadingToggleVisibility(true);
         try {
-            // Gửi yêu cầu PATCH đến API để cập nhật trạng thái `visible`
             const newVisibility = !currentCourseVisibility;
             await api.patch(`/teacher/courses/${course.id}/toggle-visibility`, {
-                visible: newVisibility, // Gửi trạng thái mong muốn
+                visible: newVisibility,
             });
-            setCurrentCourseVisibility(newVisibility); // Cập nhật trạng thái ngay lập tức trên UI
+            setCurrentCourseVisibility(newVisibility);
             toast.success(newVisibility ? 'Khóa học đã được hiển thị!' : 'Khóa học đã được ẩn!');
-            if (onCourseActionSuccess) {
-                onCourseActionSuccess(); // Gọi lại để refresh danh sách nếu cần
-            }
-        } catch (error) {
-            console.error('Lỗi khi cập nhật trạng thái hiển thị:', error);
+            onCourseActionSuccess?.();
+        } catch {
             toast.error('Có lỗi xảy ra khi cập nhật trạng thái hiển thị.');
         } finally {
             setLoadingToggleVisibility(false);
@@ -106,18 +113,26 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
             </div>
 
             <div className="p-4 flex flex-col flex-grow">
-                <div className="flex-shrink-0" style={{ height: '90px' }}>
+                <div className="flex-shrink-0" style={{ minHeight: '90px' }}>
                     <h2 className="font-bold text-xl text-gray-800 line-clamp-2 mb-1" title={course?.title}>
                         {course?.title}
                     </h2>
+
                     <p className="line-clamp-3 text-gray-600 text-sm">{course?.description}</p>
+
+                    {averageRatingState !== null && (
+                        <div className="mt-2 flex items-center gap-2 text-yellow-600 text-sm font-medium">
+                            <Star className="w-4 h-4" />
+                            <span>Đánh giá: {averageRatingState.toFixed(1)} / 5</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col flex-grow justify-end gap-3 mt-10">
                     <div className="flex items-center justify-between text-gray-700">
                         <h2 className="flex items-center gap-2">
                             <Book className="text-primary h-5 w-5" />
-                            Số bài học: N/A {/* Cần cập nhật số bài học thực tế, có thể fetch từ API */}
+                            Số bài học: N/A
                         </h2>
                         <h2 className="flex items-center gap-2 text-green-600 font-semibold">
                             <DollarSign className="h-5 w-5" />
@@ -125,7 +140,6 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                         </h2>
                     </div>
 
-                    {/* ✅ Hiển thị trạng thái ẩn/hiện nếu là giáo viên */}
                     {userRole === 'TEACHER' && (
                         <div className="flex items-center justify-end text-sm mt-1">
                             {currentCourseVisibility ? (
@@ -139,7 +153,6 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                             )}
                         </div>
                     )}
-
 
                     <div className="flex flex-col gap-2">
                         {userRole === 'STUDENT' && (
@@ -160,6 +173,12 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
 
                         {userRole === 'TEACHER' && (
                             <>
+                                <Link href={`/student/courses/${course.id}`} passHref>
+                                    <Button className="w-full" variant="secondary">
+                                        <Eye className="mr-2 h-5 w-5" /> Chi tiết khóa học
+                                    </Button>
+                                </Link>
+
                                 <Link href={`/teacher/courses/${course.id}/lessons`} passHref>
                                     <Button className="w-full" variant="default">
                                         <BookOpen className="mr-2 h-5 w-5" /> Quản lý bài học
@@ -172,11 +191,10 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                                     </Button>
                                 </Link>
 
-                                {/* ✅ Nút Ẩn/Hiện khóa học */}
                                 <Button
                                     onClick={handleToggleVisibility}
                                     className="w-full"
-                                    variant={currentCourseVisibility ? "outline" : "default"} // Nút ẩn thì màu default, nút hiện thì màu outline
+                                    variant={currentCourseVisibility ? 'outline' : 'default'}
                                     disabled={loadingToggleVisibility}
                                 >
                                     {loadingToggleVisibility ? (
@@ -204,7 +222,7 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Hành động này không thể hoàn tác. Thao tác này sẽ xóa vĩnh viễn khóa học <span className="font-bold text-primary">"{course.title}"</span> và tất cả các bài học liên quan.
+                                                Hành động này sẽ xóa vĩnh viễn khóa học <span className="font-bold text-primary">{course.title}</span> và tất cả bài học liên quan.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>

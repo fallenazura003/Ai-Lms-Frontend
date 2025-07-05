@@ -20,16 +20,25 @@ export default function LoginPage() {
         e.preventDefault();
         try {
             const res = await api.post('/auth/login', { email, password });
-            setAuth(res.data.token, res.data.role, res.data.status);
 
-            if (res.data.status === 'BLOCKED') {
+            // ✅ Gọi đầy đủ 4 tham số: token, role, status, userId
+            const { token, role, status, userId } = res.data;
+            const success = setAuth(token, role, status, userId);
+
+            if (!success) {
+                setError('Tài khoản không hợp lệ.');
+                return;
+            }
+
+            if (status === 'BLOCKED') {
                 setError('Tài khoản đã bị khóa.');
                 return;
             }
 
-            if (res.data.role === 'STUDENT') router.push('/student/home');
-            else if (res.data.role === 'TEACHER') router.push('/teacher/home');
-            else if (res.data.role === 'ADMIN') router.push('/admin/dashboard');
+            // ✅ Điều hướng theo vai trò
+            if (role === 'STUDENT') router.push('/student/home');
+            else if (role === 'TEACHER') router.push('/teacher/home');
+            else if (role === 'ADMIN') router.push('/admin/dashboard');
         } catch (err: any) {
             setError(err.response?.data || 'Đăng nhập thất bại');
         }

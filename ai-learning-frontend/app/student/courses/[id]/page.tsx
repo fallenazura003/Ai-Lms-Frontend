@@ -15,6 +15,8 @@ import LessonListSidebar from '@/components/lesson/LessonListSidebar';
 import LessonContent from '@/components/lesson/LessonContent';
 import CourseLoading from '@/components/course/CourseLoading'; // Import CourseLoading
 
+import CourseCommentSection from '@/components/course/CourseCommentSection';
+
 // Cập nhật lại interface LessonResponse để bao gồm tất cả các trường is...Completed và courseId
 interface LessonResponse {
     id: string;
@@ -270,6 +272,7 @@ export default function StudentCourseDetailPage() {
                         </div>
                     )}
                 </div>
+                <CourseCommentSection courseId={course.id} />
             </main>
         </div>
     );

@@ -6,7 +6,8 @@ type AuthContextType = {
     token: string | null;
     role: string | null;
     status: string | null;
-    setAuth: (token: string, role: string, status: string) => boolean;
+    userId: string | null;
+    setAuth: (token: string, role: string, status: string, userId: string) => boolean;
     logout: () => void;
 };
 
@@ -14,6 +15,7 @@ const AuthContext = createContext<AuthContextType>({
     token: null,
     role: null,
     status: null,
+    userId: null,
     setAuth: () => false,
     logout: () => {},
 });
@@ -22,71 +24,64 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [token, setToken] = useState<string | null>(null);
     const [role, setRole] = useState<string | null>(null);
     const [status, setStatus] = useState<string | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
         const savedToken = localStorage.getItem('token');
         const savedRole = localStorage.getItem('role');
         const savedStatus = localStorage.getItem('status');
+        const savedUserId = localStorage.getItem('userId');
+
         if (savedToken) setToken(savedToken);
         if (savedRole) setRole(savedRole);
         if (savedStatus) setStatus(savedStatus);
+        if (savedUserId) setUserId(savedUserId);
     }, []);
 
-    const setAuth = (newToken: string, newRole: string, newStatus: string) => {
-        if (newStatus !== 'ACTIVE') return false; // Giả định 'ACTIVE' là trạng thái hợp lệ để setAuth
+    const setAuth = (newToken: string, newRole: string, newStatus: string, newUserId: string) => {
+        if (newStatus !== 'ACTIVE') return false;
 
         setToken(newToken);
         setRole(newRole);
         setStatus(newStatus);
+        setUserId(newUserId);
+
         localStorage.setItem('token', newToken);
         localStorage.setItem('role', newRole);
         localStorage.setItem('status', newStatus);
+        localStorage.setItem('userId', newUserId);
+
         return true;
     };
 
     const logout = async () => {
-        // Gửi yêu cầu logout đến backend
         if (token) {
             try {
-                const response = await fetch('http://localhost:8080/api/auth/logout', {
+                await fetch('http://localhost:8080/api/auth/logout', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                 });
-
-                if (response.ok) {
-                    console.log('Logout successful on server.');
-                } else {
-                    setToken(null);
-                    setRole(null);
-                    setStatus(null);
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('role');
-                    localStorage.removeItem('status');
-                }
-            } catch (error) {
-                setToken(null);
-                setRole(null);
-                setStatus(null);
-                localStorage.removeItem('token');
-                localStorage.removeItem('role');
-                localStorage.removeItem('status');
+            } catch {
+                // ignore errors
             }
-        }
 
-        // Xóa token và trạng thái khỏi client (localStorage và state)
-        setToken(null);
-        setRole(null);
-        setStatus(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        localStorage.removeItem('status');
+            setToken(null);
+            setRole(null);
+            setStatus(null);
+            setUserId(null);
+
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('status');
+            localStorage.removeItem('userId');
+        }
     };
 
     return (
-        <AuthContext.Provider value={{ token, role, status, setAuth, logout }}>
+        <AuthContext.Provider value={{ token, role, status, userId, setAuth, logout }}>
             {children}
         </AuthContext.Provider>
     );

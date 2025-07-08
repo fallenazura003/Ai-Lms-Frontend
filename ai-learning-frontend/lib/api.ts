@@ -20,22 +20,21 @@ api.interceptors.response.use(
     async (error) => {
         const status = error.response?.status;
 
-        if (status === 401 || status === 403) {
-            console.warn("Token hết hạn hoặc bị từ chối, đang đăng xuất...");
-
-            // Xóa localStorage (phòng trường hợp chưa logout được trong context)
+        if (status === 401) {
+            console.warn("Token hết hạn. Đăng xuất...");
             localStorage.removeItem("token");
             localStorage.removeItem("role");
             localStorage.removeItem("status");
-
-            // Chuyển hướng về login
             if (typeof window !== "undefined") {
-                window.location.href = "/login";
+                window.location.href = "/";
             }
+        } else if (status === 403) {
+            console.warn("Không đủ quyền. Không redirect!");
         }
 
         return Promise.reject(error);
     }
 );
+
 
 export default api;

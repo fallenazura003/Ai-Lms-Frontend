@@ -173,7 +173,7 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
 
                         {userRole === 'TEACHER' && (
                             <>
-                                <Link href={`/student/courses/${course.id}`} passHref>
+                                <Link href={`/teacher/courses/${course.id}/preview`} passHref>
                                     <Button className="w-full" variant="secondary">
                                         <Eye className="mr-2 h-5 w-5" /> Chi tiết khóa học
                                     </Button>

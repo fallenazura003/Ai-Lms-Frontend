@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import SearchBar from "@/components/SearchBar";
 
 export default function Header() {
     const router = useRouter();
@@ -47,6 +48,7 @@ export default function Header() {
                 </h1>
             </div>
 
+            <SearchBar/>
             {/* User Info / Auth Buttons */}
             <div className="flex items-center gap-3">
                 {role ? (

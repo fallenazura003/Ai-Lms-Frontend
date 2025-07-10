@@ -34,7 +34,7 @@ interface CourseProps {
         visible: boolean;
     };
     isEnrolled?: boolean;
-    userRole?: 'STUDENT' | 'TEACHER' | 'ADMIN' | null;
+    userRole?: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'ANONYMOUS' | null;
     onCourseActionSuccess?: () => void;
 }
 

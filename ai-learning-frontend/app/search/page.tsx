@@ -1,141 +1,226 @@
 "use client";
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react'; // Import useCallback
 import api from '@/lib/api';
-import CourseCard from '@/components/course/CourseCard'; // component hiển thị khóa học
-import { toast } from 'sonner'; // Để hiển thị thông báo lỗi
+import CourseCard from '@/components/course/CourseCard';
+import { toast } from 'sonner';
+import Pagination from '@/components/Pagination';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Frown, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-// Import component Pagination mới của bạn
-import Pagination from '@/components/Pagination'; // Đảm bảo đường dẫn đúng đến component Pagination của bạn
+// --- Định nghĩa các Interface (Dựa trên CourseResponse của Backend) ---
 
-// --- Định nghĩa các Interface phù hợp với DTO và phản hồi của Backend ---
-
-// Định nghĩa CourseSummaryDTO ở frontend, khớp với CourseSummaryDTO của backend
-interface CourseSummaryDTO {
+interface CourseResponseDTO {
     id: string;
     title: string;
     description: string;
     price: number;
-    imageUrl: string; // Đổi từ imageUrl sang thumbnail để khớp với DTO của bạn
-    createdBy: string; // Tên của người tạo
+    category?: string;
+    creatorName: string;
+    imageUrl: string;
     createdAt: string;
+    updatedAt: string;
+    visible: boolean;
 }
 
-// Định nghĩa cấu trúc phản hồi Page của Spring Data JPA
 interface PageResponse<T> {
-    content: T[];          // Danh sách các phần tử trên trang hiện tại
-    totalPages: number;    // Tổng số trang
-    totalElements: number; // Tổng số phần tử
-    number: number;        // Số trang hiện tại (0-indexed)
-    size: number;          // Kích thước của trang
-    first: boolean;        // Là trang đầu tiên hay không
-    last: boolean;         // Là trang cuối cùng hay không
-    empty: boolean;        // Trang có trống hay không
+    content: T[];
+    totalPages: number;
+    totalElements: number;
+    number: number;
+    size: number;
+    first: boolean;
+    last: boolean;
+    empty: boolean;
 }
 
-// --- Cập nhật SearchPage Component ---
+// --- Component SearchPage ---
 
 export default function SearchPage() {
     const searchParams = useSearchParams();
-    const keyword = searchParams.get('keyword') || ''; // Lấy từ khóa tìm kiếm
-    const [searchResults, setSearchResults] = useState<CourseSummaryDTO[]>([]); // Lưu kết quả tìm kiếm
-    const [loading, setLoading] = useState(false); // Trạng thái tải dữ liệu
-    const [currentPage, setCurrentPage] = useState(0); // Trang hiện tại (0-indexed)
-    const [totalPages, setTotalPages] = useState(0); // Tổng số trang
+    const router = useRouter();
+    const keyword = searchParams.get('keyword') || '';
 
-    // Hàm để lấy dữ liệu tìm kiếm từ API
-    const fetchSearchResults = async (page: number) => {
+    // State cho thông tin người dùng, đọc từ localStorage
+    const [userRole, setUserRole] = useState<'STUDENT' | 'TEACHER' | 'ADMIN' | 'ANONYMOUS' | null>(null); // Added 'ANONYMOUS'
+    const [userId, setUserId] = useState<string | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+    const [searchResults, setSearchResults] = useState<CourseResponseDTO[]>([]);
+    const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(new Set());
+    const [loading, setLoading] = useState(true);
+    const [loadingPurchased, setLoadingPurchased] = useState(false);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalResults, setTotalResults] = useState(0);
+
+    // useEffect để đọc thông tin người dùng từ localStorage
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        const status = localStorage.getItem('status');
+        const savedUserId = localStorage.getItem('userId');
+
+        if (token && role && status === 'ACTIVE') {
+            setIsAuthenticated(true);
+            setUserRole(role as 'STUDENT' | 'TEACHER' | 'ADMIN');
+            setUserId(savedUserId);
+        } else {
+            setIsAuthenticated(false);
+            setUserRole('ANONYMOUS'); // Explicitly set to ANONYMOUS if not authenticated
+            setUserId(null);
+        }
+        setIsLoadingAuth(false);
+    }, []); // Run once on mount
+
+    // Memoize fetchSearchResults using useCallback to prevent unnecessary re-creation
+    const fetchSearchResults = useCallback(async (page: number) => {
         if (!keyword.trim()) {
             setSearchResults([]);
             setTotalPages(0);
+            setTotalResults(0);
+            setLoading(false);
             return;
         }
 
         setLoading(true);
         try {
-            // Gửi yêu cầu GET đến API tìm kiếm của backend
-            // Bao gồm tham số 'page' và 'size' cho phân trang
-            const response = await api.get<PageResponse<CourseSummaryDTO>>(
+            const response = await api.get<PageResponse<CourseResponseDTO>>(
                 `/public/courses/search?q=${encodeURIComponent(keyword)}&page=${page}&size=8`
             );
-
-            // Cập nhật state với dữ liệu từ phản hồi của API
             setSearchResults(response.data.content);
             setTotalPages(response.data.totalPages);
-            setCurrentPage(response.data.number); // Cập nhật trang hiện tại từ phản hồi
+            setCurrentPage(response.data.number);
+            setTotalResults(response.data.totalElements);
         } catch (error) {
             console.error("Error fetching search results:", error);
             toast.error("Không thể tải kết quả tìm kiếm. Vui lòng thử lại.");
             setSearchResults([]);
             setTotalPages(0);
+            setTotalResults(0);
         } finally {
             setLoading(false);
         }
-    };
+    }, [keyword]); // Dependency on keyword
 
-    // useEffect để gọi API khi từ khóa tìm kiếm thay đổi hoặc khi trang được tải lần đầu
+    // Memoize fetchPurchasedCourseIds using useCallback
+    const fetchPurchasedCourseIds = useCallback(async () => {
+        if (!isLoadingAuth && isAuthenticated && userRole === 'STUDENT' && userId) {
+            setLoadingPurchased(true);
+            try {
+                // Ensure this API call is correctly authenticated and authorized on the backend
+                const response = await api.get<string[]>(`/public/courses/purchased-course-ids`);
+                setPurchasedCourseIds(new Set(response.data));
+            } catch (error) {
+                console.error("Error fetching purchased course IDs:", error);
+                // Consider adding a more user-friendly message or handling for 403 specific errors
+            } finally {
+                setLoadingPurchased(false);
+            }
+        } else {
+            setPurchasedCourseIds(new Set());
+            setLoadingPurchased(false);
+        }
+    }, [isLoadingAuth, isAuthenticated, userRole, userId]); // Dependencies for this specific fetch
+
     useEffect(() => {
-        fetchSearchResults(0); // Luôn bắt đầu từ trang 0 khi từ khóa thay đổi
-    }, [keyword]); // Dependency array: chạy lại khi `keyword` thay đổi
+        if (!isLoadingAuth) {
+            fetchSearchResults(0);
+        }
+    }, [keyword, isLoadingAuth, fetchSearchResults]); // Add fetchSearchResults to dependencies
 
-    // Hàm xử lý khi người dùng chuyển trang (được truyền xuống component Pagination)
+    useEffect(() => {
+        fetchPurchasedCourseIds();
+    }, [isAuthenticated, userRole, userId, isLoadingAuth, fetchPurchasedCourseIds]); // Add fetchPurchasedCourseIds to dependencies
+
     const handlePageChange = (newPage: number) => {
-        fetchSearchResults(newPage); // Gọi lại API với trang mới
+        fetchSearchResults(newPage);
     };
 
-    // Hàm để xử lý đường dẫn ảnh (giả sử backend trả về đường dẫn tương đối)
-    const getFullImageUrl = (path: string | undefined | null) => {
-        if (!path || path.trim() === '') {
-            return 'https://via.placeholder.com/400x250?text=No+Image'; // Ảnh mặc định
-        }
-        // Giả sử ảnh được lưu ở http://localhost:8080/uploads/
-        if (path.startsWith('/uploads/')) {
-            return `http://localhost:8080${path}`;
-        }
-        return path; // Trả về nguyên gốc nếu nó đã là URL đầy đủ
+    const handleGoBack = () => {
+        router.back();
     };
 
-    // --- Render giao diện ---
+    const overallLoading = loading || isLoadingAuth || (isAuthenticated && userRole === 'STUDENT' && loadingPurchased);
+
     return (
-        <div className="container mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6">
-                Kết quả tìm kiếm cho: &quot;{keyword}&quot;
-            </h1>
+        <div className="container mx-auto p-6 min-h-[calc(100vh-64px)] flex flex-col">
+            <div className="flex items-center gap-4 mb-6">
+                <Button variant="ghost" size="icon" onClick={handleGoBack} aria-label="Quay lại">
+                    <ArrowLeft className="h-6 w-6" />
+                </Button>
+                <h1 className="text-3xl font-bold">
+                    Kết quả tìm kiếm cho: &quot;{keyword}&quot;
+                </h1>
+            </div>
 
-            {loading && <p className="text-center text-gray-600">Đang tải kết quả...</p>}
-
-            {!loading && searchResults.length === 0 && (
-                <p className="text-center text-gray-600">
-                    Không tìm thấy khóa học nào phù hợp với từ khóa của bạn.
-                </p>
-            )}
-
-            {!loading && searchResults.length > 0 && (
+            {overallLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
+                    {Array.from({ length: 8 }).map((_, index) => (
+                        <div key={index} className="flex flex-col space-y-3">
+                            <Skeleton className="h-[150px] w-full rounded-md" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-[80%]" />
+                                <Skeleton className="h-4 w-[60%]" />
+                                <Skeleton className="h-4 w-[40%]" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {searchResults.map(course => (
-                            <CourseCard
-                                key={course.id}
-                                course={{
-                                    id: course.id,
-                                    title: course.title,
-                                    description: course.description,
-                                    imageUrl: getFullImageUrl(course.imageUrl),
-                                    creatorName: course.createdBy,
-                                    createdAt: course.createdAt,
-                                    price: course.price, // Đặt giá trị mặc định hoặc lấy từ DTO nếu có
-                                    visible: true // Đặt giá trị mặc định hoặc lấy từ DTO nếu có
-                                }}
-                            />
-                        ))}
-                    </div>
+                    {totalResults > 0 && (
+                        <p className="text-lg text-gray-700 mb-6">
+                            Tìm thấy <span className="font-semibold text-primary">{totalResults}</span> khóa học phù hợp.
+                        </p>
+                    )}
 
-                    {/* Sử dụng component Pagination mới */}
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={handlePageChange}
-                    />
+                    {searchResults.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-gray-50 rounded-lg shadow-inner">
+                            <Frown className="h-16 w-16 text-gray-400 mb-4" />
+                            <p className="text-xl font-semibold text-gray-700 mb-2">
+                                Rất tiếc, không tìm thấy khóa học nào.
+                            </p>
+                            <p className="text-gray-500 text-center max-w-md">
+                                Vui lòng thử tìm kiếm với từ khóa khác hoặc kiểm tra lại chính tả.
+                            </p>
+                            <Button className="mt-6" onClick={handleGoBack}>
+                                Quay lại trang trước
+                            </Button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {searchResults.map(course => (
+                                    <CourseCard
+                                        key={course.id}
+                                        course={{
+                                            id: course.id,
+                                            title: course.title,
+                                            description: course.description,
+                                            imageUrl: course.imageUrl,
+                                            creatorName: course.creatorName,
+                                            createdAt: course.createdAt,
+                                            price: course.price,
+                                            visible: course.visible,
+                                        }}
+                                        isEnrolled={isAuthenticated && userRole === 'STUDENT' && purchasedCourseIds.has(course.id)}
+                                        userRole={userRole} // Directly pass userRole from state
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="mt-auto pt-8">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPageChange={handlePageChange}
+                                />
+                            </div>
+                        </>
+                    )}
                 </>
             )}
         </div>

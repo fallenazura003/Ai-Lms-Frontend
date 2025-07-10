@@ -1,6 +1,7 @@
-"use client";
+'use client'
+
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react'; // Import useCallback
+import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import CourseCard from '@/components/course/CourseCard';
 import { toast } from 'sonner';
@@ -8,15 +9,16 @@ import Pagination from '@/components/Pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Frown, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import CourseFilter from '@/components/course/CourseFilter';
 
-// --- Định nghĩa các Interface (Dựa trên CourseResponse của Backend) ---
+// --- Định nghĩa các Interface ---
 
 interface CourseResponseDTO {
     id: string;
     title: string;
     description: string;
     price: number;
-    category?: string;
+    category?: string; // ✅ Đảm bảo category có ở đây
     creatorName: string;
     imageUrl: string;
     createdAt: string;
@@ -42,12 +44,13 @@ export default function SearchPage() {
     const router = useRouter();
     const keyword = searchParams.get('keyword') || '';
 
-    // State cho thông tin người dùng, đọc từ localStorage
-    const [userRole, setUserRole] = useState<'STUDENT' | 'TEACHER' | 'ADMIN' | 'ANONYMOUS' | null>(null); // Added 'ANONYMOUS'
+    // State cho thông tin người dùng
+    const [userRole, setUserRole] = useState<'STUDENT' | 'TEACHER' | 'ADMIN' | 'ANONYMOUS' | null>('ANONYMOUS');
     const [userId, setUserId] = useState<string | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
+    // State cho kết quả tìm kiếm và phân trang
     const [searchResults, setSearchResults] = useState<CourseResponseDTO[]>([]);
     const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
@@ -55,6 +58,11 @@ export default function SearchPage() {
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [totalResults, setTotalResults] = useState(0);
+
+    // State cho bộ lọc được quản lý bởi SearchPage (chỉ có category)
+    const [filters, setFilters] = useState<{ category: string }>({
+        category: '',
+    });
 
     // useEffect để đọc thông tin người dùng từ localStorage
     useEffect(() => {
@@ -69,13 +77,13 @@ export default function SearchPage() {
             setUserId(savedUserId);
         } else {
             setIsAuthenticated(false);
-            setUserRole('ANONYMOUS'); // Explicitly set to ANONYMOUS if not authenticated
+            setUserRole('ANONYMOUS');
             setUserId(null);
         }
         setIsLoadingAuth(false);
-    }, []); // Run once on mount
+    }, []);
 
-    // Memoize fetchSearchResults using useCallback to prevent unnecessary re-creation
+    // Memoize fetchSearchResults using useCallback
     const fetchSearchResults = useCallback(async (page: number) => {
         if (!keyword.trim()) {
             setSearchResults([]);
@@ -87,8 +95,18 @@ export default function SearchPage() {
 
         setLoading(true);
         try {
+            const params = new URLSearchParams();
+            params.append('q', keyword);
+            params.append('page', String(page));
+            params.append('size', '8');
+
+            // Thêm tham số lọc category từ state `filters`
+            if (filters.category && filters.category !== 'Tất cả') {
+                params.append('category', filters.category);
+            }
+
             const response = await api.get<PageResponse<CourseResponseDTO>>(
-                `/public/courses/search?q=${encodeURIComponent(keyword)}&page=${page}&size=8`
+                `/public/courses/search?${params.toString()}`
             );
             setSearchResults(response.data.content);
             setTotalPages(response.data.totalPages);
@@ -103,19 +121,17 @@ export default function SearchPage() {
         } finally {
             setLoading(false);
         }
-    }, [keyword]); // Dependency on keyword
+    }, [keyword, filters]);
 
     // Memoize fetchPurchasedCourseIds using useCallback
     const fetchPurchasedCourseIds = useCallback(async () => {
         if (!isLoadingAuth && isAuthenticated && userRole === 'STUDENT' && userId) {
             setLoadingPurchased(true);
             try {
-                // Ensure this API call is correctly authenticated and authorized on the backend
                 const response = await api.get<string[]>(`/public/courses/purchased-course-ids`);
                 setPurchasedCourseIds(new Set(response.data));
             } catch (error) {
                 console.error("Error fetching purchased course IDs:", error);
-                // Consider adding a more user-friendly message or handling for 403 specific errors
             } finally {
                 setLoadingPurchased(false);
             }
@@ -123,17 +139,17 @@ export default function SearchPage() {
             setPurchasedCourseIds(new Set());
             setLoadingPurchased(false);
         }
-    }, [isLoadingAuth, isAuthenticated, userRole, userId]); // Dependencies for this specific fetch
+    }, [isLoadingAuth, isAuthenticated, userRole, userId]);
 
     useEffect(() => {
         if (!isLoadingAuth) {
             fetchSearchResults(0);
         }
-    }, [keyword, isLoadingAuth, fetchSearchResults]); // Add fetchSearchResults to dependencies
+    }, [keyword, isLoadingAuth, fetchSearchResults]);
 
     useEffect(() => {
         fetchPurchasedCourseIds();
-    }, [isAuthenticated, userRole, userId, isLoadingAuth, fetchPurchasedCourseIds]); // Add fetchPurchasedCourseIds to dependencies
+    }, [isAuthenticated, userRole, userId, isLoadingAuth, fetchPurchasedCourseIds]);
 
     const handlePageChange = (newPage: number) => {
         fetchSearchResults(newPage);
@@ -142,6 +158,11 @@ export default function SearchPage() {
     const handleGoBack = () => {
         router.back();
     };
+
+    // Hàm callback nhận các bộ lọc từ CourseFilter (chỉ có category)
+    const handleFiltersUpdated = useCallback((newFilters: { category: string }) => {
+        setFilters(newFilters);
+    }, []);
 
     const overallLoading = loading || isLoadingAuth || (isAuthenticated && userRole === 'STUDENT' && loadingPurchased);
 
@@ -154,6 +175,11 @@ export default function SearchPage() {
                 <h1 className="text-3xl font-bold">
                     Kết quả tìm kiếm cho: &quot;{keyword}&quot;
                 </h1>
+            </div>
+
+            {/* SỬ DỤNG COMPONENT CourseFilter */}
+            <div className="mb-6">
+                <CourseFilter onFilterChange={handleFiltersUpdated} />
             </div>
 
             {overallLoading ? (
@@ -205,9 +231,10 @@ export default function SearchPage() {
                                             createdAt: course.createdAt,
                                             price: course.price,
                                             visible: course.visible,
+                                            category: course.category // ✅ Truyền category xuống CourseCard
                                         }}
                                         isEnrolled={isAuthenticated && userRole === 'STUDENT' && purchasedCourseIds.has(course.id)}
-                                        userRole={userRole} // Directly pass userRole from state
+                                        userRole={userRole}
                                     />
                                 ))}
                             </div>

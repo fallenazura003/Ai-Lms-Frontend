@@ -1,10 +1,10 @@
-'use client';
+// 'use client'; // Giữ nguyên dòng này nếu bạn đang dùng Next.js App Router
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
     Book, LoaderCircle, PlayCircle, Settings, DollarSign, Trash2, Edit, BookOpen,
-    Eye, EyeOff, Star
+    Eye, EyeOff, Star, Tag // ✅ Thêm Tag icon cho category
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -32,6 +32,7 @@ interface CourseProps {
         creatorName: string;
         createdAt: string;
         visible: boolean;
+        category?: string; // ✅ Thêm category vào CourseProps
     };
     isEnrolled?: boolean;
     userRole?: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'ANONYMOUS' | null;
@@ -129,6 +130,14 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                 </div>
 
                 <div className="flex flex-col flex-grow justify-end gap-3 mt-10">
+                    {/* ✅ Hiển thị Category nếu có */}
+                    {course.category && (
+                        <div className="flex items-center gap-2 text-gray-600 text-sm">
+                            <Tag className="h-4 w-4" />
+                            <span>Danh mục: {course.category}</span>
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between text-gray-700">
                         <h2 className="flex items-center gap-2">
                             <Book className="text-primary h-5 w-5" />

@@ -1,6 +1,6 @@
-'use client';
+ 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react'; // ✅ Import useCallback
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import AddNewCourseDialog from '@/components/course/AddNewCourseDialog';
@@ -9,6 +9,7 @@ import CourseCard from '@/components/course/CourseCard';
 import Pagination from '@/components/Pagination';
 import api from '@/lib/api';
 import { useAuth } from '@/store/auth';
+import CourseFilter from '@/components/course/CourseFilter'; // ✅ Import CourseFilter
 
 interface Course {
     id: string;
@@ -19,6 +20,7 @@ interface Course {
     creatorName: string;
     createdAt: string;
     visible: boolean;
+    category?: string; // ✅ Thêm category
 }
 
 interface PageResponse<T> {
@@ -37,12 +39,27 @@ export default function TeacherCourseListPage() {
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
 
-    const fetchCourses = async (page = 0, size = 8) => {
+    // ✅ State cho bộ lọc của giáo viên
+    const [teacherFilters, setTeacherFilters] = useState<{ category: string }>({
+        category: '',
+    });
+
+    // ✅ Cập nhật fetchCourses để nhận các tham số lọc
+    const fetchCourses = useCallback(async (page = 0, size = 8) => {
         try {
+            const params = new URLSearchParams();
+            params.append('page', String(page));
+            params.append('size', String(size));
+
+            // ✅ Thêm tham số category nếu có
+            if (teacherFilters.category && teacherFilters.category !== 'Tất cả') {
+                params.append('category', teacherFilters.category);
+            }
+
             const endpoint =
                 role === 'TEACHER'
-                    ? `/teacher/courses?page=${page}&size=${size}`
-                    : `/admin/courses?page=${page}&size=${size}`;
+                    ? `/teacher/courses?${params.toString()}` // Sử dụng params
+                    : `/admin/courses?${params.toString()}`;   // Sử dụng params
 
             const res = await api.get<PageResponse<Course>>(endpoint);
             setCourseList(res.data.content);
@@ -55,16 +72,23 @@ export default function TeacherCourseListPage() {
         } catch (error) {
             console.error('Lỗi khi tải danh sách khóa học:', error);
         }
-    };
+    }, [role, teacherFilters]); // ✅ Thêm teacherFilters vào dependencies
 
     useEffect(() => {
         if (role === 'TEACHER' || role === 'ADMIN') {
-            fetchCourses(0);
+            fetchCourses(0); // Lần đầu tải với bộ lọc mặc định
         }
-    }, [role]);
+    }, [role, fetchCourses]); // ✅ fetchCourses cũng là dependency
 
     const handlePageChange = (page: number) => fetchCourses(page);
-    const refreshCurrentPage = () => fetchCourses(currentPage);
+    const refreshCurrentPage = () => fetchCourses(currentPage); // Vẫn gọi với currentPage hiện tại
+
+    // ✅ Callback cho CourseFilter của giáo viên
+    const handleTeacherFiltersChange = useCallback((newFilters: { category: string }) => {
+        setTeacherFilters(newFilters);
+        setCurrentPage(0); // Reset về trang 0 khi bộ lọc thay đổi
+        // fetchCourses(0) sẽ tự động được gọi bởi useEffect phụ thuộc vào teacherFilters
+    }, []);
 
     return (
         <div className="mt-10 p-6">
@@ -83,8 +107,13 @@ export default function TeacherCourseListPage() {
                 )}
             </div>
 
+            {/* ✅ Tích hợp CourseFilter vào đây */}
+            <div className="mb-6">
+                <CourseFilter onFilterChange={handleTeacherFiltersChange} />
+            </div>
+
             <div ref={courseListSectionRef}>
-                {courseList.length === 0 ? (
+                {courseList.length === 0 && teacherFilters.category === '' ? (
                     <div className="flex flex-col items-center justify-center p-8 border rounded bg-secondary text-center">
                         <Image src="/certificate.jpg" alt="No Course" width={100} height={100} className="mb-4" />
                         <h2 className="text-xl font-bold text-gray-700">Bạn chưa có khóa học nào</h2>
@@ -93,6 +122,11 @@ export default function TeacherCourseListPage() {
                                 <Button className="mt-4">+ Tạo khóa học mới</Button>
                             </AddNewCourseDialog>
                         )}
+                    </div>
+                ) : courseList.length === 0 && teacherFilters.category !== '' ? (
+                    <div className="flex flex-col items-center justify-center p-8 border rounded bg-secondary text-center">
+                        <h2 className="text-xl font-bold text-gray-700">Không tìm thấy khóa học nào phù hợp với danh mục này.</h2>
+                        <p className="text-gray-500">Vui lòng chọn danh mục khác hoặc đặt lại bộ lọc.</p>
                     </div>
                 ) : (
                     <>
@@ -106,7 +140,9 @@ export default function TeacherCourseListPage() {
                                 />
                             ))}
                         </div>
-                        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                        {totalPages > 1 && ( // Chỉ hiển thị phân trang nếu có nhiều hơn 1 trang
+                            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+                        )}
                     </>
                 )}
             </div>

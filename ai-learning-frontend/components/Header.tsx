@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import SearchBar from '@/components/SearchBar';
 import { WalletPanel } from '@/components/WalletPanel';
-import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react'; // Import useCallback
 import { useBalanceStore } from '@/store/balance';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function Header() {
     const router = useRouter();
@@ -66,11 +66,12 @@ export default function Header() {
             <div className="flex items-center gap-4">
                 {role ? (
                     <>
-                        <Bell className="w-5 h-5 text-gray-600 hover:text-blue-600 cursor-pointer" />
+                        <NotificationBell email={user?.email || ''} />
+                        <span className="text-sm text-gray-800">👤 {user?.name || 'Người dùng'}</span>
 
                         {(role === 'STUDENT' || role === 'TEACHER') && (
                             <div className="flex items-center space-x-2">
-                                <span className="text-sm text-gray-800">👤 {user?.name || 'Người dùng'}</span>
+
 
                                 <span className="text-sm font-semibold text-green-600">
                                     💰 {balance !== null ? `${balance.toLocaleString()}đ` : '...'}

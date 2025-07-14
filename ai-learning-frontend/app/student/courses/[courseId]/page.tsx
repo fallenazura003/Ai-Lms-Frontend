@@ -13,6 +13,8 @@ import LessonListSidebar from '@/components/lesson/LessonListSidebar';
 import LessonContent from '@/components/lesson/LessonContent';
 import CourseLoading from '@/components/course/CourseLoading';
 import CourseCommentSection from '@/components/course/CourseCommentSection';
+import { WalletPanel } from '@/components/WalletPanel'; // ✅ Thêm dòng này
+import { useBalanceStore } from '@/store/balance';
 
 interface LessonResponse {
     id: string;
@@ -45,11 +47,10 @@ interface CourseDetail {
 }
 
 export default function CourseDetailPage() {
-    const { courseId } = useParams(); // ✅ đổi từ id => courseId
+    const { courseId } = useParams();
     const { role } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
-
     const isTeacherPreview = pathname.startsWith('/teacher/courses');
 
     const [course, setCourse] = useState<CourseDetail | null>(null);
@@ -58,6 +59,14 @@ export default function CourseDetailPage() {
     const [loading, setLoading] = useState(true);
     const [buying, setBuying] = useState(false);
     const [hasPurchased, setHasPurchased] = useState(false);
+
+
+
+    const { balance, setBalance, fetchBalance } = useBalanceStore((state) => state);
+
+
+
+    const [walletOpen, setWalletOpen] = useState(false); // ✅ Biến mở popup ví
 
     const fetchLessons = async (cid: string) => {
         try {
@@ -77,17 +86,9 @@ export default function CourseDetailPage() {
         }
     };
 
-
     useEffect(() => {
-        if (!courseId || typeof courseId !== 'string') {
-            console.warn('⛔ courseId không hợp lệ hoặc chưa có:', courseId);
-            return;
-        }
-
-        if (!role) {
-            console.warn('⛔ Role chưa sẵn sàng:', role);
-            return;
-        }
+        if (!courseId || typeof courseId !== 'string') return;
+        if (!role) return;
 
         const fetchCourseData = async () => {
             setLoading(true);
@@ -95,11 +96,15 @@ export default function CourseDetailPage() {
                 let courseApiUrl = '';
                 let shouldFetchLessons = false;
 
+                // Nếu là học sinh => gọi API mua và gọi luôn fetchBalance
                 if (role === 'STUDENT') {
                     courseApiUrl = `/student/courses/${courseId}`;
                     const purchasedRes = await api.get<boolean>(`/student/enrolled/${courseId}`);
                     setHasPurchased(purchasedRes.data);
                     shouldFetchLessons = purchasedRes.data;
+
+                    // ✅ Tự động gọi số dư mỗi khi vào trang học sinh
+                    await fetchBalance();
                 } else if (role === 'TEACHER' && isTeacherPreview) {
                     courseApiUrl = `/teacher/courses/${courseId}/preview`;
                     setHasPurchased(true);
@@ -109,27 +114,14 @@ export default function CourseDetailPage() {
                     return;
                 }
 
-                console.log('→ Fetching course...');
-                console.log('Role:', role);
-                console.log('Course ID:', courseId);
-                console.log('API URL:', courseApiUrl);
-
                 const courseRes = await api.get(courseApiUrl);
-                console.log('✅ Dữ liệu khóa học:', courseRes.data);
                 setCourse(courseRes.data);
 
                 if (shouldFetchLessons) {
                     await fetchLessons(courseId);
                 }
             } catch (err: any) {
-                console.error('❌ Lỗi khi fetch course:', err);
-                if (err.response?.status === 403) {
-                    toast.error('Bạn không có quyền truy cập khóa học này (403).');
-                } else if (err.response?.status === 404) {
-                    toast.error('Khóa học không tồn tại (404).');
-                } else {
-                    toast.error(err.response?.data?.message || 'Không thể tải khóa học.');
-                }
+                toast.error(err.response?.data?.message || 'Không thể tải khóa học.');
             } finally {
                 setLoading(false);
             }
@@ -138,20 +130,35 @@ export default function CourseDetailPage() {
         fetchCourseData();
     }, [courseId, role, isTeacherPreview]);
 
+
     const handleBuy = async () => {
         if (!course) return;
         setBuying(true);
         try {
-            await api.post('/student/purchase', { courseId: course.id });
-            toast.success('Đã mua khóa học thành công!');
+            const res = await api.post('/student/purchase', { courseId: course.id });
+
+            toast.success(res.data.message || 'Đã mua khóa học thành công!');
             setHasPurchased(true);
             await fetchLessons(course.id);
+
+            if (res.data.data?.balance !== undefined) {
+                setBalance(res.data.data.balance);
+            } else {
+                await fetchBalance();
+            }
         } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Mua khóa học thất bại');
+            const message = err.response?.data?.message || 'Mua khóa học thất bại';
+            if (message.includes('Số dư không đủ để mua khóa học này.')) {
+                toast.error('❌ Số dư không đủ để mua khóa học này.');
+                setTimeout(() => setWalletOpen(true), 300);
+            } else {
+                toast.error(message);
+            }
         } finally {
             setBuying(false);
         }
     };
+
 
     const getFullImageUrl = (path: string | undefined | null) => {
         if (!path || path.trim() === '') {
@@ -169,15 +176,11 @@ export default function CourseDetailPage() {
     const hasNextLesson = activeLessonIndex < lessons.length - 1;
 
     const handleNextLesson = () => {
-        if (hasNextLesson) {
-            setActiveLessonId(lessons[activeLessonIndex + 1].id);
-        }
+        if (hasNextLesson) setActiveLessonId(lessons[activeLessonIndex + 1].id);
     };
 
     const handlePreviousLesson = () => {
-        if (hasPreviousLesson) {
-            setActiveLessonId(lessons[activeLessonIndex - 1].id);
-        }
+        if (hasPreviousLesson) setActiveLessonId(lessons[activeLessonIndex - 1].id);
     };
 
     if (loading) return <CourseLoading />;
@@ -245,15 +248,13 @@ export default function CourseDetailPage() {
                     <p className="text-gray-700 whitespace-pre-line mb-8">{course.description}</p>
 
                     {hasPurchased ? (
-                        <div className="flex flex-col">
-                            <LessonContent
-                                lesson={activeLesson}
-                                onNextLesson={handleNextLesson}
-                                onPreviousLesson={handlePreviousLesson}
-                                hasNextLesson={hasNextLesson}
-                                hasPreviousLesson={hasPreviousLesson}
-                            />
-                        </div>
+                        <LessonContent
+                            lesson={activeLesson}
+                            onNextLesson={handleNextLesson}
+                            onPreviousLesson={handlePreviousLesson}
+                            hasNextLesson={hasNextLesson}
+                            hasPreviousLesson={hasPreviousLesson}
+                        />
                     ) : (
                         <div className="p-8 text-center bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
                             <h3 className="text-xl font-semibold mb-2">Mua khóa học để truy cập các bài học</h3>
@@ -263,6 +264,16 @@ export default function CourseDetailPage() {
                 </div>
 
                 <CourseCommentSection courseId={course.id} />
+
+                {/* ✅ WalletPanel để nạp tiền khi không đủ */}
+                <WalletPanel
+                    open={walletOpen}
+                    onOpenChange={setWalletOpen}
+                    onSuccess={(newBalance) => {
+                        setBalance(newBalance);
+                    }}
+                />
+
             </main>
         </div>
     );

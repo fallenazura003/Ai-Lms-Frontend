@@ -2,6 +2,7 @@
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import {Toaster} from "sonner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -11,6 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <main >
                 <div >
                     {children}
+                    <Toaster position="top-right" richColors />
                 </div>
             </main>
 

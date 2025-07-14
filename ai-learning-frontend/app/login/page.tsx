@@ -21,9 +21,20 @@ export default function LoginPage() {
         try {
             const res = await api.post('/auth/login', { email, password });
 
-            // ✅ Gọi đầy đủ 4 tham số: token, role, status, userId
-            const { token, role, status, userId } = res.data;
-            const success = setAuth(token, role, status, userId);
+            const {
+                token,
+                role,
+                status,
+                userId,
+                userName,
+                userEmail
+            } = res.data;
+
+            const success = setAuth(token, role, status, userId, {
+                id: userId,
+                name: userName,
+                email: userEmail,
+            });
 
             if (!success) {
                 setError('Tài khoản không hợp lệ.');
@@ -35,7 +46,7 @@ export default function LoginPage() {
                 return;
             }
 
-            // ✅ Điều hướng theo vai trò
+            // Điều hướng theo vai trò
             if (role === 'STUDENT') router.push('/student/home');
             else if (role === 'TEACHER') router.push('/teacher/home');
             else if (role === 'ADMIN') router.push('/admin/dashboard');
@@ -43,6 +54,8 @@ export default function LoginPage() {
             setError(err.response?.data || 'Đăng nhập thất bại');
         }
     };
+
+
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50">

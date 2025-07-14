@@ -3,7 +3,7 @@ import '@/styles/globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/store/auth';
-import {Toaster} from "sonner";
+import AppWrapper from '@/components/AppWrapper'; // ✅ import
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,12 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body className={inter.className}>
         <AuthProvider>
             <div className="flex flex-col min-h-screen">
-                {/*<Header />*/}
                 <main className="flex-grow">
-                    {children}
-                    <Toaster position="top-right" richColors />
+                    <AppWrapper>{children}</AppWrapper>
                 </main>
-                {/*<Footer />*/}
             </div>
         </AuthProvider>
         </body>

@@ -4,6 +4,8 @@ import { connectSocket, disconnectSocket } from "@/utils/socket";
 import { Bell } from "lucide-react";
 import api from "@/lib/api";
 
+// ... imports
+
 interface Props {
     email: string;
 }
@@ -13,33 +15,44 @@ export default function NotificationBell({ email }: Props) {
         notifications,
         addNotification,
         setNotifications,
-        markAsRead,
     } = useNotificationStore();
     const [open, setOpen] = useState(false);
 
     useEffect(() => {
-        // ✅ Fetch ban đầu bằng api custom
         api.get("/notifications")
             .then((res) => setNotifications(res.data))
             .catch((err) => console.error("Lỗi fetch notifications:", err));
 
-        // ✅ Kết nối socket
         connectSocket(email, (msg) => addNotification(msg));
 
         return () => disconnectSocket();
     }, [email]);
 
-    const unreadCount = notifications.filter((n) => !n.read).length;
+    // ✅ Change to n.isRead
+    const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-    const handleRead = (id: number) => {
-        api.post(`/notifications/${id}/read`)
-            .then(() => markAsRead(id))
-            .catch((err) => console.error("Lỗi đánh dấu đã đọc:", err));
+    const handleBellClick = async () => {
+        // Only perform the mark-as-read API call and state update if the bell is being opened
+        // AND there are unread notifications.
+        // This prevents unnecessary API calls when closing the bell or if no unread notifications exist.
+        if (!open && unreadCount > 0) {
+            try {
+                await api.post("/notifications/mark-all-as-read");
+                // Optimistically update the store: map all existing notifications to isRead: true
+                setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+                console.log("All notifications marked as read and state updated.");
+            } catch (err) {
+                console.error("Lỗi đánh dấu tất cả đã đọc:", err);
+                // Optionally, fetch notifications again if marking failed to re-sync
+                // api.get("/notifications").then((res) => setNotifications(res.data));
+            }
+        }
+        setOpen(!open); // Always toggle dropdown visibility
     };
 
     return (
         <div className="relative">
-            <button onClick={() => setOpen(!open)} className="relative">
+            <button onClick={handleBellClick} className="relative">
                 <Bell />
                 {unreadCount > 0 && (
                     <span className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 rounded-full">
@@ -52,10 +65,10 @@ export default function NotificationBell({ email }: Props) {
                     {notifications.map((n) => (
                         <div
                             key={n.id}
-                            className={`p-2 border-b hover:bg-gray-100 cursor-pointer ${
-                                n.read ? "text-gray-500" : "font-semibold"
+                            className={`p-2 border-b ${
+                                // ✅ Change to n.isRead
+                                n.isRead ? "text-gray-500" : "font-semibold bg-blue-50"
                             }`}
-                            onClick={() => handleRead(n.id)}
                         >
                             {n.message}
                             <div className="text-xs text-gray-400">

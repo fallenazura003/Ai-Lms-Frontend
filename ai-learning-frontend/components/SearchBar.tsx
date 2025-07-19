@@ -67,17 +67,17 @@ export default function SearchBar() {
     }
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full"> {/* ✅ Thêm w-full để nó chiếm hết chiều rộng được cấp */}
             <Input
                 placeholder="Tìm kiếm khóa học..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full max-w-sm"
+                className="flex-grow min-w-0" // ✅ flex-grow để input chiếm không gian còn lại, min-w-0 tránh tràn
             />
-            <Button onClick={handleSearch} variant="default">
-                <Search className="w-4 h-4 mr-1" />
-                Tìm
+            <Button onClick={handleSearch} variant="default" size="sm"> {/* ✅ size="sm" cho nút trên mobile */}
+                <Search className="w-4 h-4 mr-1 md:mr-1" /> {/* Kích thước icon có thể thay đổi */}
+                <span className="hidden sm:inline">Tìm</span> {/* ✅ Ẩn chữ "Tìm" trên mobile nhỏ hơn */}
             </Button>
         </div>
     );

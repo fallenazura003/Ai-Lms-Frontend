@@ -3,11 +3,10 @@ import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import {
-    CheckCircle, Lightbulb, Edit, ListChecks, FileText,
+     Lightbulb, Edit, ListChecks, FileText,
     Type, ChevronLeft, ChevronRight, PlayCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// Import YouTubePlayer (chúng ta sẽ cần đảm bảo component này responsive)
 import YouTubePlayer from '@/components/lesson/YoutubePlayer';
 import MCQViewer from "@/components/lesson/MCQViewer";
 
@@ -54,18 +53,15 @@ function LessonContent({
 
     if (!lesson) {
         return (
-            <div className="p-10 text-gray-500 italic flex justify-center items-center h-[60vh] border rounded-md bg-white shadow-md">
+            <div className="p-4 sm:p-10 text-gray-500 italic flex justify-center items-center h-[50vh] sm:h-[60vh] border rounded-md bg-white shadow-md mx-4 md:mx-0"> {/* ✅ Responsive height và margin ngang */}
                 Vui lòng chọn một bài học để xem nội dung.
             </div>
         );
     }
 
-    // `renderMultipleChoice` của bạn đã rất tốt, giữ nguyên.
-    // Tôi sẽ giả định rằng MCQViewer đã xử lý việc parse và render dữ liệu `multipleChoice` JSON string.
-
     return (
-        <div ref={topRef} className="space-y-8 pb-10">
-            <h1 className="font-extrabold text-4xl sm:text-5xl text-blue-900 text-center mb-10 leading-tight">
+        <div ref={topRef} className="space-y-6 sm:space-y-8 pb-10 px-4 md:px-0"> {/* ✅ Responsive spacing và padding ngang */}
+            <h1 className="font-extrabold text-3xl sm:text-4xl lg:text-5xl text-blue-900 text-center mb-6 sm:mb-10 leading-tight"> {/* ✅ Responsive font size và margin */}
                 {lesson.title}
             </h1>
 
@@ -73,12 +69,12 @@ function LessonContent({
             {lesson.recallQuestion && (
                 <Card className="border-l-4 border-purple-600 shadow-lg">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-purple-800 flex items-center">
-                            <Lightbulb className="w-7 h-7 mr-3 text-purple-600" /> Câu hỏi gợi nhớ
+                        <CardTitle className="text-xl sm:text-2xl font-bold text-purple-800 flex items-center"> {/* ✅ Responsive font size */}
+                            <Lightbulb className="w-6 h-6 sm:w-7 sm:h-7 mr-2 sm:mr-3 text-purple-600" /> Câu hỏi gợi nhớ {/* ✅ Responsive icon size */}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="prose prose-lg max-w-none">
+                    <CardContent className="p-4 sm:p-6"> {/* ✅ Responsive padding */}
+                        <div className="prose prose-sm sm:prose-lg max-w-none"> {/* ✅ Responsive prose size */}
                             <ReactMarkdown>{lesson.recallQuestion}</ReactMarkdown>
                         </div>
                     </CardContent>
@@ -89,13 +85,12 @@ function LessonContent({
             {lesson.material && (
                 <Card className="border-l-4 border-green-600 shadow-lg">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-green-800 flex items-center">
-                            <FileText className="w-7 h-7 mr-3 text-green-600" /> Tài liệu bài học
+                        <CardTitle className="text-xl sm:text-2xl font-bold text-green-800 flex items-center">
+                            <FileText className="w-6 h-6 sm:w-7 sm:h-7 mr-2 sm:mr-3 text-green-600" /> Tài liệu bài học
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="prose prose-lg max-w-none">
-                            {/* ✅ SỬA LỖI: Hiển thị đúng lesson.material */}
+                    <CardContent className="p-4 sm:p-6">
+                        <div className="prose prose-sm sm:prose-lg max-w-none">
                             <ReactMarkdown>{lesson.material}</ReactMarkdown>
                         </div>
                     </CardContent>
@@ -104,11 +99,10 @@ function LessonContent({
 
             {/* Video */}
             {lesson.youtubeVideoId && (
-                <div className="border rounded-md shadow-lg p-6 bg-white">
-                    <h3 className="font-bold text-2xl text-gray-800 mb-4 flex items-center">
-                        <PlayCircle className="w-7 h-7 mr-3 text-red-600" /> Xem video
+                <div className="border rounded-md shadow-lg p-4 sm:p-6 bg-white"> {/* ✅ Responsive padding */}
+                    <h3 className="font-bold text-xl sm:text-2xl text-gray-800 mb-3 sm:mb-4 flex items-center"> {/* ✅ Responsive font size và margin */}
+                        <PlayCircle className="w-6 h-6 sm:w-7 sm:h-7 mr-2 sm:mr-3 text-red-600" /> Xem video
                     </h3>
-                    {/* YouTubePlayer ở đây sẽ nhận được width: 100% từ div cha này */}
                     <YouTubePlayer videoId={lesson.youtubeVideoId} />
                 </div>
             )}
@@ -117,13 +111,12 @@ function LessonContent({
             {lesson.shortAnswer && (
                 <Card className="border-l-4 border-yellow-600 shadow-lg">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-yellow-800 flex items-center">
-                            <Edit className="w-7 h-7 mr-3 text-yellow-600" /> Câu hỏi trả lời ngắn
+                        <CardTitle className="text-xl sm:text-2xl font-bold text-yellow-800 flex items-center">
+                            <Edit className="w-6 h-6 sm:w-7 sm:h-7 mr-2 sm:mr-3 text-yellow-600" /> Câu hỏi trả lời ngắn
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="prose prose-lg max-w-none">
-                            {/* ✅ SỬA LỖI: Hiển thị đúng lesson.shortAnswer */}
+                    <CardContent className="p-4 sm:p-6">
+                        <div className="prose prose-sm sm:prose-lg max-w-none">
                             <ReactMarkdown>{lesson.shortAnswer}</ReactMarkdown>
                         </div>
                     </CardContent>
@@ -132,17 +125,16 @@ function LessonContent({
 
             {/* Bước 4: Câu hỏi trắc nghiệm (MCQViewer đã xử lý) */}
             {lesson.multipleChoice && (
-                <Card className="border-l-4 border-blue-600 shadow-lg"> {/* Màu xanh dương cho trắc nghiệm */}
+                <Card className="border-l-4 border-blue-600 shadow-lg">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-blue-800 flex items-center">
-                            <ListChecks className="w-7 h-7 mr-3 text-blue-600" /> Câu hỏi trắc nghiệm
+                        <CardTitle className="text-xl sm:text-2xl font-bold text-blue-800 flex items-center">
+                            <ListChecks className="w-6 h-6 sm:w-7 sm:h-7 mr-2 sm:mr-3 text-blue-600" /> Câu hỏi trắc nghiệm
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        {/* MCQViewer đã nhận dữ liệu JSON string, nên không cần renderMultipleChoice ở đây */}
+                    <CardContent className="p-4 sm:p-6">
                         <MCQViewer
                             data={lesson.multipleChoice}
-                            lessonId={lesson.id} // Đảm bảo truyền lessonId nếu cần cho logic bên trong MCQViewer
+                            lessonId={lesson.id}
                         />
                     </CardContent>
                 </Card>
@@ -152,13 +144,12 @@ function LessonContent({
             {lesson.summaryTask && (
                 <Card className="border-l-4 border-orange-600 shadow-lg">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-orange-800 flex items-center">
-                            <Type className="w-7 h-7 mr-3 text-orange-600" /> Nhiệm vụ tóm tắt
+                        <CardTitle className="text-xl sm:text-2xl font-bold text-orange-800 flex items-center">
+                            <Type className="w-6 h-6 sm:w-7 sm:h-7 mr-2 sm:mr-3 text-orange-600" /> Nhiệm vụ tóm tắt
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="prose prose-lg max-w-none">
-                            {/* ✅ SỬA LỖI: Hiển thị đúng lesson.summaryTask */}
+                    <CardContent className="p-4 sm:p-6">
+                        <div className="prose prose-sm sm:prose-lg max-w-none">
                             <ReactMarkdown>{lesson.summaryTask}</ReactMarkdown>
                         </div>
                     </CardContent>
@@ -166,12 +157,12 @@ function LessonContent({
             )}
 
             {/* Nút điều hướng */}
-            <div className="flex justify-between mt-10">
+            <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6 sm:mt-10"> {/* ✅ Flex direction và gap */}
                 <Button
                     onClick={onPreviousLesson}
                     disabled={!hasPreviousLesson}
                     variant="outline"
-                    className="flex items-center gap-2 text-lg px-6 py-3"
+                    className="flex items-center justify-center gap-2 text-base sm:text-lg px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto" // ✅ Responsive width, font, padding
                 >
                     <ChevronLeft className="h-5 w-5" /> Bài học trước
                 </Button>
@@ -179,7 +170,7 @@ function LessonContent({
                     onClick={onNextLesson}
                     disabled={!hasNextLesson}
                     variant="default"
-                    className="flex items-center gap-2 text-lg px-6 py-3"
+                    className="flex items-center justify-center gap-2 text-base sm:text-lg px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto" // ✅ Responsive width, font, padding
                 >
                     Bài học tiếp theo <ChevronRight className="h-5 w-5" />
                 </Button>

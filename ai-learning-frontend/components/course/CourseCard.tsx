@@ -1,10 +1,10 @@
-// 'use client'; // Giữ nguyên dòng này nếu bạn đang dùng Next.js App Router
+// 'use client';
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
     Book, LoaderCircle, PlayCircle, Settings, DollarSign, Trash2, Edit, BookOpen,
-    Eye, EyeOff, Star, Tag // ✅ Thêm Tag icon cho category
+    Eye, EyeOff, Star, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -32,7 +32,8 @@ interface CourseProps {
         creatorName: string;
         createdAt: string;
         visible: boolean;
-        category?: string; // ✅ Thêm category vào CourseProps
+        category?: string;
+        // lessonCount: number; // ❌ Đã bỏ trường này khỏi interface
     };
     isEnrolled?: boolean;
     userRole?: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'ANONYMOUS' | null;
@@ -102,55 +103,55 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
 
     return (
         <div className="shadow-lg rounded-xl overflow-hidden bg-white hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1 flex flex-col h-full">
-            <div className="relative w-full h-[200px] flex-shrink-0">
+            {/* Image Section */}
+            <div className="relative w-full h-[160px] sm:h-[180px] lg:h-[200px] flex-shrink-0">
                 <Image
                     src={getFullImageUrl(course?.imageUrl)}
                     alt={course?.title || 'Course Image'}
                     fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     priority
                     className="rounded-t-xl object-cover"
                 />
             </div>
 
-            <div className="p-4 flex flex-col flex-grow">
+            {/* Content Section */}
+            <div className="p-3 sm:p-4 flex flex-col flex-grow">
                 <div className="flex-shrink-0" style={{ minHeight: '90px' }}>
-                    <h2 className="font-bold text-xl text-gray-800 line-clamp-2 mb-1" title={course?.title}>
+                    <h2 className="font-bold text-lg sm:text-xl text-gray-800 line-clamp-2 mb-1" title={course?.title}>
                         {course?.title}
                     </h2>
-
-                    <p className="line-clamp-3 text-gray-600 text-sm">{course?.description}</p>
+                    <p className="line-clamp-3 text-gray-600 text-sm mb-2">{course?.description}</p>
 
                     {averageRatingState !== null && (
-                        <div className="mt-2 flex items-center gap-2 text-yellow-600 text-sm font-medium">
+                        <div className="mt-2 flex items-center gap-1 sm:gap-2 text-yellow-600 text-sm font-medium">
                             <Star className="w-4 h-4" />
                             <span>Đánh giá: {averageRatingState.toFixed(1)} / 5</span>
                         </div>
                     )}
                 </div>
 
-                <div className="flex flex-col flex-grow justify-end gap-3 mt-10">
-                    {/* ✅ Hiển thị Category nếu có */}
+                <div className="flex flex-col flex-grow justify-end gap-2 sm:gap-3 mt-4">
+                    {/* Display Category */}
                     {course.category && (
-                        <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <div className="flex items-center gap-1 sm:gap-2 text-gray-600 text-sm">
                             <Tag className="h-4 w-4" />
                             <span>Danh mục: {course.category}</span>
                         </div>
                     )}
 
-                    <div className="flex items-center justify-between text-gray-700">
-                        <h2 className="flex items-center gap-2">
-                            <Book className="text-primary h-5 w-5" />
-                            Số bài học: N/A
-                        </h2>
-                        <h2 className="flex items-center gap-2 text-green-600 font-semibold">
-                            <DollarSign className="h-5 w-5" />
-                            {course.price === 0 ? 'Miễn phí' : `${course.price} VNĐ`}
+                    {/* Price (Removed Lesson Count) */}
+                    <div className="flex items-center justify-end text-gray-700 text-sm sm:text-base"> {/* ✅ Chỉ còn justify-end */}
+                        {/* ❌ Đã bỏ phần hiển thị số bài học */}
+                        <h2 className="flex items-center gap-1 sm:gap-2 text-green-600 font-semibold">
+                            <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+                            {course.price === 0 ? 'Miễn phí' : `${course.price.toLocaleString()} VNĐ`}
                         </h2>
                     </div>
 
+                    {/* Teacher Visibility Status */}
                     {userRole === 'TEACHER' && (
-                        <div className="flex items-center justify-end text-sm mt-1">
+                        <div className="flex items-center justify-end text-xs sm:text-sm mt-1">
                             {currentCourseVisibility ? (
                                 <span className="text-green-600 flex items-center gap-1">
                                     <Eye className="h-4 w-4" /> Đang hiển thị
@@ -163,16 +164,17 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                         </div>
                     )}
 
-                    <div className="flex flex-col gap-2">
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2 mt-2">
                         {userRole === 'STUDENT' && (
                             isEnrolled ? (
-                                <Link href={`/student/courses/${course.id}`} passHref>
+                                <Link href={`/student/courses/${course.id}`} passHref className="w-full">
                                     <Button className="w-full" variant="secondary">
                                         <PlayCircle className="mr-2 h-5 w-5" /> Tiếp tục học
                                     </Button>
                                 </Link>
                             ) : (
-                                <Link href={`/student/courses/${course.id}`} passHref>
+                                <Link href={`/student/courses/${course.id}`} passHref className="w-full">
                                     <Button className="w-full">
                                         <PlayCircle className="mr-2 h-5 w-5" /> Xem chi tiết
                                     </Button>
@@ -182,19 +184,19 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
 
                         {userRole === 'TEACHER' && (
                             <>
-                                <Link href={`/teacher/courses/${course.id}/preview`} passHref>
+                                <Link href={`/teacher/courses/${course.id}/preview`} passHref className="w-full">
                                     <Button className="w-full" variant="secondary">
                                         <Eye className="mr-2 h-5 w-5" /> Chi tiết khóa học
                                     </Button>
                                 </Link>
 
-                                <Link href={`/teacher/courses/${course.id}/lessons`} passHref>
+                                <Link href={`/teacher/courses/${course.id}/lessons`} passHref className="w-full">
                                     <Button className="w-full" variant="default">
                                         <BookOpen className="mr-2 h-5 w-5" /> Quản lý bài học
                                     </Button>
                                 </Link>
 
-                                <Link href={`/teacher/courses/${course.id}/edit`} passHref>
+                                <Link href={`/teacher/courses/${course.id}/edit`} passHref className="w-full">
                                     <Button className="w-full" variant="outline">
                                         <Edit className="mr-2 h-5 w-5" /> Sửa khóa học
                                     </Button>
@@ -247,7 +249,7 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                         )}
 
                         {userRole === 'ADMIN' && (
-                            <Link href={`/admin/courses/${course.id}/edit`} passHref>
+                            <Link href={`/admin/courses/${course.id}/edit`} passHref className="w-full">
                                 <Button className="w-full" variant="outline">
                                     <Settings className="mr-2 h-5 w-5" /> Chỉnh sửa khóa học
                                 </Button>

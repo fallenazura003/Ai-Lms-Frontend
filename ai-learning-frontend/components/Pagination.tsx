@@ -37,7 +37,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
     const pages = getPages();
 
     return (
-        <div className="flex justify-center mt-6 gap-2 flex-wrap">
+        <div className="flex justify-center mt-6 gap-1 sm:gap-2 flex-wrap px-4"> {/* ✅ gap nhỏ hơn trên mobile, thêm px */}
             <Button
                 size="sm"
                 variant="outline"

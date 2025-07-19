@@ -53,20 +53,20 @@ export default function NotificationBell({ email }: Props) {
     return (
         <div className="relative">
             <button onClick={handleBellClick} className="relative">
-                <Bell />
+                <Bell className="w-6 h-6 md:w-auto md:h-auto" /> {/* Điều chỉnh kích thước icon nếu cần */}
                 {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 rounded-full">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full"> {/* Điều chỉnh vị trí */}
                         {unreadCount}
                     </span>
                 )}
             </button>
             {open && (
-                <div className="absolute right-0 mt-2 w-80 bg-white border rounded shadow-md max-h-[400px] overflow-y-auto z-50">
+                <div className="absolute right-0 mt-2 w-72 md:w-80 bg-white border rounded shadow-md max-h-[400px] overflow-y-auto z-50
+                            transform -translate-x-1/2 left-1/2 md:translate-x-0 md:left-auto"> {/* ✅ Responsive width và căn giữa trên mobile */}
                     {notifications.map((n) => (
                         <div
                             key={n.id}
                             className={`p-2 border-b ${
-                                // ✅ Change to n.isRead
                                 n.isRead ? "text-gray-500" : "font-semibold bg-blue-50"
                             }`}
                         >

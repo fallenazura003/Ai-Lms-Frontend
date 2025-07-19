@@ -21,7 +21,7 @@ interface CommentResponse {
 }
 
 export default function CourseCommentSection({ courseId }: { courseId: string }) {
-    const { role, userId } = useAuth(); // userId cũng rất quan trọng
+    const { role, userId } = useAuth();
     const [comments, setComments] = useState<CommentResponse[]>([]);
     const [newComment, setNewComment] = useState('');
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -31,11 +31,10 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
     const [rating, setRating] = useState<number>(0);
     const [averageRating, setAverageRating] = useState<number | null>(null);
     const [alreadyRated, setAlreadyRated] = useState(false);
-    const [enrolled, setEnrolled] = useState(false); // Chỉ quan trọng cho STUDENT
+    const [enrolled, setEnrolled] = useState(false);
 
     const fetchComments = async () => {
         try {
-            // API này giờ đã là permitAll()
             const res = await api.get(`/student/courses/${courseId}/comments`);
             setComments(res.data);
         } catch (err) {
@@ -46,7 +45,6 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
 
     const fetchRatingData = async () => {
         try {
-            // API này giờ đã là permitAll()
             const avg = await api.get(`/student/courses/${courseId}/rating/average`);
             setAverageRating(avg.data);
         } catch (err) {
@@ -54,7 +52,6 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
             console.error("Error fetching average rating:", err);
         }
 
-        // Chỉ fetch rating của tôi nếu là STUDENT
         if (role === 'STUDENT') {
             try {
                 const mine = await api.get(`/student/courses/${courseId}/rating/mine`);
@@ -64,14 +61,13 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                 }
             } catch (err) {
                 setAlreadyRated(false);
-                // Có thể có lỗi 404 nếu chưa đánh giá, không cần toast
                 console.error("Error fetching my rating:", err);
             }
         }
     };
 
     const fetchEnrollment = async () => {
-        if (role === 'STUDENT') { // Chỉ kiểm tra enrollment cho STUDENT
+        if (role === 'STUDENT') {
             try {
                 const res = await api.get(`/student/enrolled/${courseId}`);
                 setEnrolled(res.data);
@@ -80,7 +76,7 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                 console.error("Error fetching enrollment status:", err);
             }
         } else {
-            setEnrolled(true); // Đối với TEACHER, coi như luôn "enrolled" để cho phép bình luận/tương tác
+            setEnrolled(true);
         }
     };
 
@@ -88,18 +84,16 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
         fetchComments();
         fetchRatingData();
         fetchEnrollment();
-    }, [courseId, role]); // Thêm role vào dependency array
+    }, [courseId, role]);
 
     const handlePostComment = async () => {
         if (!newComment.trim()) return;
-        // Kiểm tra quyền bình luận: nếu là STUDENT phải enrolled, TEACHER luôn được phép
         if (role === 'STUDENT' && !enrolled) {
             toast.error('Bạn cần mua khóa học để bình luận');
             return;
         }
 
         try {
-            // API này giờ đã là hasAnyRole('STUDENT', 'TEACHER')
             await api.post(`/student/courses/${courseId}/comments`, {
                 content: newComment,
             });
@@ -113,14 +107,12 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
 
     const handleReplySubmit = async (parentId: string) => {
         if (!replyContent.trim()) return;
-        // Kiểm tra quyền trả lời: tương tự như bình luận
         if (role === 'STUDENT' && !enrolled) {
             toast.error('Bạn cần mua khóa học để trả lời bình luận');
             return;
         }
 
         try {
-            // API này giờ đã là hasAnyRole('STUDENT', 'TEACHER')
             await api.post(`/student/courses/${courseId}/comments`, {
                 content: replyContent,
                 parentId,
@@ -137,7 +129,6 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
     const handleEditComment = async (commentId: string) => {
         if (!editContent.trim()) return;
         try {
-            // API này giờ đã là hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')
             await api.put(`/student/courses/${courseId}/comments/${commentId}`, {
                 content: editContent,
             });
@@ -151,7 +142,6 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
 
     const handleDeleteComment = async (commentId: string) => {
         try {
-            // API này giờ đã là hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')
             await api.delete(`/student/courses/${courseId}/comments/${commentId}`);
             toast.success('Đã xóa bình luận');
             fetchComments();
@@ -161,22 +151,21 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
     };
 
     const handleRate = async (score: number) => {
-        if (role !== 'STUDENT') { // Chỉ STUDENT mới được đánh giá
+        if (role !== 'STUDENT') {
             toast.error('Chỉ học sinh mới có thể đánh giá khóa học.');
             return;
         }
-        if (!enrolled) { // STUDENT phải enrolled mới được đánh giá
+        if (!enrolled) {
             toast.error('Bạn cần mua khóa học để đánh giá.');
             return;
         }
 
         try {
-            // API này giờ đã là hasRole('STUDENT')
             await api.post(`/student/courses/${courseId}/rating`, { value: score });
             toast.success(alreadyRated ? 'Đã cập nhật đánh giá' : 'Đã đánh giá thành công');
             setRating(score);
             setAlreadyRated(true);
-            fetchRatingData(); // Re-fetch cả average để cập nhật ngay
+            fetchRatingData();
         } catch (error: any) {
             if (error.response?.status === 403) {
                 toast.error('Bạn không có quyền đánh giá khóa học này');
@@ -188,73 +177,67 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
         }
     };
 
-    // Hàm kiểm tra quyền sửa/xóa bình luận
     const canManageComment = (commentUserId: string) => {
-        if (!userId) return false; // Chưa đăng nhập
+        if (!userId) return false;
 
-        // Admin luôn có quyền
         if (role === 'ADMIN') return true;
-
-        // Người tạo bình luận có quyền
         if (commentUserId === userId) return true;
-
-        // Giáo viên của khóa học có thể có quyền quản lý bình luận
-        // (Đây là logic bạn cần đảm bảo ở backend, nhưng frontend có thể cho phép hiển thị nút)
-        // if (role === 'TEACHER') return true; // Giả định teacher có quyền xóa/sửa comment trong khóa học của mình
 
         return false;
     };
 
     return (
-        <div className="mt-10 border-t pt-6">
-            <h2 className="text-2xl font-semibold mb-4">Đánh giá & Bình luận</h2>
+        <div className="mt-8 md:mt-10 border-t pt-4 md:pt-6 px-4 sm:px-0"> {/* ✅ Responsive padding */}
+            <h2 className="text-xl md:text-2xl font-semibold mb-3 md:mb-4">Đánh giá & Bình luận</h2> {/* ✅ Responsive font size */}
 
             {averageRating != null && (
-                <div className="mb-4 text-yellow-600 font-medium">
+                <div className="mb-3 md:mb-4 text-yellow-600 font-medium text-base md:text-lg"> {/* ✅ Responsive font size and margin */}
                     Điểm trung bình: {Number(averageRating).toFixed(1)} / 5
                 </div>
             )}
 
             {/* Phần đánh giá khóa học */}
-            {role === 'STUDENT' && ( // Chỉ hiển thị phần đánh giá cho STUDENT
-                <div className="mb-6">
-                    <p className="font-medium mb-2">
+            {role === 'STUDENT' && (
+                <div className="mb-5 md:mb-6 p-4 border rounded-md bg-gray-50"> {/* ✅ Thêm styling cho phần đánh giá */}
+                    <p className="font-medium mb-2 text-base md:text-lg">
                         {alreadyRated ? 'Cập nhật đánh giá của bạn:' : 'Đánh giá khóa học:'}
                     </p>
-                    {/* Luôn hiển thị sao cho STUDENT, nhưng chỉ cho phép bấm khi enrolled */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2"> {/* ✅ Responsive gap */}
                         {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                                 key={star}
-                                className={`w-6 h-6 cursor-pointer transition ${
+                                className={`w-5 h-5 sm:w-6 sm:h-6 cursor-pointer transition ${ // ✅ Responsive icon size
                                     rating >= star ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'
-                                } ${!enrolled ? 'opacity-50 cursor-not-allowed' : ''}`} // Làm mờ nếu chưa enrolled
-                                onClick={() => enrolled && handleRate(star)} // Chỉ gọi handleRate nếu enrolled
+                                } ${!enrolled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={() => enrolled && handleRate(star)}
                             />
                         ))}
                     </div>
-                    {!enrolled && ( // Thông báo nếu STUDENT chưa enrolled
-                        <div className="text-sm text-red-500 mt-2">* Bạn cần mua khóa học để đánh giá</div>
+                    {!enrolled && (
+                        <div className="text-xs md:text-sm text-red-500 mt-2"> {/* ✅ Responsive font size */}
+                            * Bạn cần mua khóa học để đánh giá
+                        </div>
                     )}
                 </div>
             )}
 
             {/* Phần gửi bình luận mới */}
-            {role && (role === 'STUDENT' || role === 'TEACHER') && ( // Cho phép STUDENT và TEACHER bình luận
-                <div className="mb-6">
+            {role && (role === 'STUDENT' || role === 'TEACHER') && (
+                <div className="mb-6 p-4 border rounded-md bg-gray-50"> {/* ✅ Thêm styling cho phần bình luận mới */}
                     <Textarea
                         placeholder="Nhập bình luận..."
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
+                        className="w-full text-sm md:text-base" // ✅ Full width và responsive font size
+                        rows={3} // Giới hạn số dòng hiển thị
                     />
-                    {/* Kiểm tra enrolled chỉ cho STUDENT, TEACHER luôn được phép gửi */}
                     {(role === 'STUDENT' && enrolled) || role === 'TEACHER' ? (
-                        <Button className="mt-2" onClick={handlePostComment}>
+                        <Button className="mt-3 w-full sm:w-auto" onClick={handlePostComment}> {/* ✅ Full width trên mobile, auto trên desktop */}
                             Gửi bình luận
                         </Button>
                     ) : (
                         role === 'STUDENT' && !enrolled && (
-                            <div className="mt-2 text-sm text-red-500">
+                            <div className="mt-2 text-xs md:text-sm text-red-500">
                                 * Bạn cần mua khóa học để bình luận
                             </div>
                         )
@@ -262,19 +245,24 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                 </div>
             )}
 
-
             {/* Hiển thị danh sách bình luận */}
             <div>
+                <h3 className="text-xl font-semibold mb-3 md:mb-4">Tất cả bình luận</h3> {/* ✅ Thêm tiêu đề */}
+                {comments.length === 0 && (
+                    <p className="text-gray-500 italic text-center py-4">Chưa có bình luận nào.</p>
+                )}
                 {comments.map((comment) => (
-                    <div key={comment.id} className="mb-4 border-b pb-3">
-                        <div className="font-semibold text-gray-800">{comment.userName}</div>
-                        <div className="text-sm text-gray-600">{new Date(comment.createdAt).toLocaleString()}</div>
+                    <div key={comment.id} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0"> {/* ✅ Responsive margin và border */}
+                        <div className="font-semibold text-gray-800 text-base md:text-lg">{comment.userName}</div> {/* ✅ Responsive font size */}
+                        <div className="text-xs md:text-sm text-gray-600 mb-1">{new Date(comment.createdAt).toLocaleString()}</div> {/* ✅ Responsive font size */}
 
                         {editingCommentId === comment.id ? (
                             <div className="mt-2">
                                 <Textarea
                                     value={editContent}
                                     onChange={(e) => setEditContent(e.target.value)}
+                                    className="w-full text-sm md:text-base"
+                                    rows={3}
                                 />
                                 <div className="mt-2 flex gap-2">
                                     <Button size="sm" onClick={() => handleEditComment(comment.id)}>Lưu</Button>
@@ -282,16 +270,15 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                                 </div>
                             </div>
                         ) : (
-                            <p className="mt-1 text-gray-700 whitespace-pre-line">{comment.content}</p>
-                        )}
+                            <p className="mt-1 text-gray-700 text-sm md:text-base whitespace-pre-line">{comment.content}</p>
+                            )}
 
-                        {/* Nút chỉnh sửa/xóa cho comment cha */}
                         {canManageComment(comment.userId) && editingCommentId !== comment.id && (
-                            <div className="flex gap-2 mt-1">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2"> {/* ✅ Flex wrap cho mobile */}
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="text-xs text-gray-600 hover:underline"
+                                    className="text-xs text-gray-600 hover:underline px-0 py-0 h-auto" // ✅ Nút nhỏ gọn hơn
                                     onClick={() => {
                                         setEditingCommentId(comment.id);
                                         setEditContent(comment.content);
@@ -302,7 +289,7 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="text-xs text-red-600 hover:underline"
+                                    className="text-xs text-red-600 hover:underline px-0 py-0 h-auto" // ✅ Nút nhỏ gọn hơn
                                     onClick={() => handleDeleteComment(comment.id)}
                                 >
                                     Xóa
@@ -310,30 +297,30 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                             </div>
                         )}
 
-                        {/* Nút trả lời */}
-                        {role && (role === 'STUDENT' && enrolled) || role === 'TEACHER' ? ( // Cho phép STUDENT đã enrolled hoặc TEACHER trả lời
+                        {role && (role === 'STUDENT' && enrolled) || role === 'TEACHER' ? (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-xs text-blue-600 hover:underline mt-1"
+                                className="text-xs text-blue-600 hover:underline mt-2 px-0 py-0 h-auto" // ✅ Nút nhỏ gọn hơn
                                 onClick={() => setReplyingTo(comment.id)}
                             >
                                 Trả lời
                             </Button>
                         ) : null}
 
-
                         {/* Hiển thị replies */}
                         {comment.replies?.map((reply) => (
-                            <div key={reply.id} className="ml-6 mt-2 border-l pl-4 border-gray-300">
-                                <div className="font-semibold text-gray-700">{reply.userName}</div>
-                                <div className="text-sm text-gray-500">{new Date(reply.createdAt).toLocaleString()}</div>
+                            <div key={reply.id} className="ml-4 sm:ml-6 mt-2 border-l pl-3 sm:pl-4 border-gray-300"> {/* ✅ Responsive margin và padding */}
+                                <div className="font-semibold text-gray-700 text-base md:text-lg">{reply.userName}</div> {/* ✅ Responsive font size */}
+                                <div className="text-xs md:text-sm text-gray-500 mb-1">{new Date(reply.createdAt).toLocaleString()}</div> {/* ✅ Responsive font size */}
 
                                 {editingCommentId === reply.id ? (
                                     <div className="mt-2">
                                         <Textarea
                                             value={editContent}
                                             onChange={(e) => setEditContent(e.target.value)}
+                                            className="w-full text-sm md:text-base"
+                                            rows={3}
                                         />
                                         <div className="mt-2 flex gap-2">
                                             <Button size="sm" onClick={() => handleEditComment(reply.id)}>Lưu</Button>
@@ -341,16 +328,15 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                                         </div>
                                     </div>
                                 ) : (
-                                    <p className="text-gray-700 mt-1">{reply.content}</p>
-                                )}
+                                    <p className="text-gray-700 mt-1 text-sm md:text-base whitespace-pre-line">{reply.content}</p>
+                                    )}
 
-                                {/* Nút chỉnh sửa/xóa cho reply */}
                                 {canManageComment(reply.userId) && editingCommentId !== reply.id && (
-                                    <div className="flex gap-2 mt-1">
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2"> {/* ✅ Flex wrap cho mobile */}
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="text-xs text-gray-600 hover:underline"
+                                            className="text-xs text-gray-600 hover:underline px-0 py-0 h-auto"
                                             onClick={() => {
                                                 setEditingCommentId(reply.id);
                                                 setEditContent(reply.content);
@@ -361,7 +347,7 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="text-xs text-red-600 hover:underline"
+                                            className="text-xs text-red-600 hover:underline px-0 py-0 h-auto"
                                             onClick={() => handleDeleteComment(reply.id)}
                                         >
                                             Xóa
@@ -373,11 +359,13 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
 
                         {/* Form trả lời */}
                         {replyingTo === comment.id && (
-                            <div className="ml-6 mt-2">
+                            <div className="ml-4 sm:ml-6 mt-3 p-3 bg-gray-50 border rounded-md"> {/* ✅ Responsive margin và styling */}
                                 <Textarea
                                     placeholder="Phản hồi..."
                                     value={replyContent}
                                     onChange={(e) => setReplyContent(e.target.value)}
+                                    className="w-full text-sm md:text-base"
+                                    rows={2} // Giảm số dòng cho reply
                                 />
                                 <div className="mt-2 flex gap-2">
                                     <Button size="sm" onClick={() => handleReplySubmit(comment.id)}>

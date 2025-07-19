@@ -42,7 +42,7 @@ export default function Sidebar() {
     return (
         <aside
             className={clsx(
-                "bg-white shadow-lg p-4 flex flex-col border-r border-gray-200 transition-all duration-300",
+                "hidden md:flex flex-col bg-white shadow-lg p-4 border-r border-gray-200 transition-all duration-300", // ✅ Ẩn hoàn toàn trên mobile
                 collapsed ? "w-20" : "w-64"
             )}
         >

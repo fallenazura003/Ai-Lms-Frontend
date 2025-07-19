@@ -9,21 +9,14 @@ function YouTubePlayer({ videoId }: { videoId: string | null }) {
         return null;
     }
 
-    // ✅ Đã sửa URL nhúng YouTube chính xác
     const youtubeEmbedUrl = `https://www.youtube.com/embed/${videoId}`;
 
     return (
-        // ✅ Loại bỏ các styling thừa ở đây. Component này chỉ nên lo việc hiển thị video responsive.
-        // Các padding, border, shadow, title "Video liên quan:" đã được chuyển ra LessonContent.tsx.
-        <div className="w-full"> {/* Đảm bảo wrapper chiếm toàn bộ chiều rộng có sẵn */}
-            {/* aspect-w-16 aspect-h-9 là cách Tailwind/plugin CSS xử lý responsive aspect ratio.
-                Đảm bảo plugin này được cài đặt và cấu hình đúng trong dự án của bạn (ví dụ: @tailwindcss/aspect-ratio).
-                Nếu không dùng Tailwind hoặc plugin này, bạn cần sử dụng CSS thuần như đã đề cập trước đó.
-            */}
-            <div className="w-full aspect-w-16 aspect-h-9">
+        <div className="w-full">
+            <div className="relative pt-[56.25%]"> {/* Tạo tỷ lệ 16:9 bằng cách dùng padding-top (56.25% = 9/16) */}
                 <iframe
-                    className="w-full h-full rounded-md"
-                    src={youtubeEmbedUrl} // Sử dụng URL đã sửa
+                    className="absolute top-0 left-0 w-full h-full rounded-md" // Full size trong container tương đối
+                    src={youtubeEmbedUrl}
                     title="YouTube video player"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

@@ -45,7 +45,7 @@ export function WalletPanel({ open, onOpenChange, onSuccess }: WalletPanelProps)
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="max-w-[95%] sm:max-w-lg"> {/* ✅ Điều chỉnh max-width cho mobile nhỏ */}
                 <DialogHeader>
                     <DialogTitle>Nạp tiền vào ví</DialogTitle>
                 </DialogHeader>
@@ -55,8 +55,9 @@ export function WalletPanel({ open, onOpenChange, onSuccess }: WalletPanelProps)
                         placeholder="Nhập số tiền"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
+                        className="w-full" // ✅ Đảm bảo input chiếm đủ chiều rộng
                     />
-                    <Button onClick={handleTopUp} disabled={loading}>
+                    <Button onClick={handleTopUp} disabled={loading} className="w-full"> {/* ✅ Đảm bảo nút chiếm đủ chiều rộng */}
                         {loading ? 'Đang xử lý...' : 'Xác nhận'}
                     </Button>
                 </div>

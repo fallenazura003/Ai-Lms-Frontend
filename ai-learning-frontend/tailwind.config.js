@@ -43,6 +43,12 @@ module.exports = {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
+			dark: {
+				DEFAULT: '#1A1A2E', // Ví dụ màu tối
+			},
+			light: {
+				DEFAULT: '#F4F4F4', // Ví dụ màu sáng
+			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',

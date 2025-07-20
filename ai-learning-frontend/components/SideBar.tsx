@@ -8,14 +8,14 @@ import {
     ChartBarIcon,
     UserGroupIcon,
 } from '@heroicons/react/24/outline';
-import { LogsIcon, ChevronsLeft, ChevronsRight } from 'lucide-react'; // ❗️ Thêm icon toggle
+import { LogsIcon, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 import { useState } from 'react';
 import clsx from 'clsx';
 
 export default function Sidebar() {
     const { role } = useAuth();
-    const [collapsed, setCollapsed] = useState(false); // ✅ Trạng thái thu gọn sidebar
+    const [collapsed, setCollapsed] = useState(false);
 
     const toggleSidebar = () => setCollapsed(!collapsed);
 
@@ -42,19 +42,22 @@ export default function Sidebar() {
     return (
         <aside
             className={clsx(
-                "hidden md:flex flex-col bg-white shadow-lg p-4 border-r border-gray-200 transition-all duration-300", // ✅ Ẩn hoàn toàn trên mobile
-                collapsed ? "w-20" : "w-64"
+                "hidden md:flex flex-col bg-white shadow-lg p-4 border-r border-gray-200 transition-all duration-300",
+                collapsed ? "w-20" : "w-64",
+                "h-screen sticky top-0" // ✅ Thêm sticky top-0 và h-screen để sidebar luôn hiển thị và không bị cuộn với nội dung chính
             )}
         >
             <div className="flex items-center justify-between mb-6">
                 {!collapsed ? (
                     <h2 className="text-2xl font-bold text-blue-700 text-center w-full">Menu</h2>
                 ) : (
+                    // Khi collapsed, bạn có thể muốn ẩn hoàn toàn hoặc chỉ hiển thị icon logo nhỏ nếu có
                     <span className="text-blue-700 text-xl font-bold"></span>
                 )}
                 <button
                     onClick={toggleSidebar}
                     className="text-gray-600 hover:text-blue-600 transition-colors"
+                    aria-label={collapsed ? "Mở rộng menu" : "Thu gọn menu"}
                 >
                     {collapsed ? (
                         <ChevronsRight className="w-5 h-5" />
@@ -64,7 +67,8 @@ export default function Sidebar() {
                 </button>
             </div>
 
-            <nav className="flex-grow">
+            {/* Điều chỉnh chính ở đây: Loại bỏ flex-grow khỏi nav */}
+            <nav>
                 <ul className="space-y-2">
                     {currentMenuItems.map((item, index) => (
                         <li key={index}>
@@ -83,7 +87,10 @@ export default function Sidebar() {
                 </ul>
             </nav>
 
-            {/* Footer */}
+            {/* Phần footer của sidebar nên nằm ngay dưới nav, không "đẩy" xuống cuối trang nếu nội dung ít */}
+            {/* Nếu bạn muốn nó vẫn ở cuối màn hình (ví dụ, có các nút đăng xuất), thì giữ mt-auto và đặt sidebar trong layout có flex-col h-screen */}
+            {/* Đối với trường hợp chỉ có vài link, tốt nhất là đặt nó ngay dưới nav để tránh khoảng trống lớn. */}
+            {/* Tôi sẽ giữ mt-auto và giả định rằng sidebar này nằm trong một layout có chiều cao toàn màn hình */}
             <div className="mt-auto pt-4 border-t border-gray-200">
                 {!collapsed ? (
                     <p className="text-sm text-gray-500 text-center">

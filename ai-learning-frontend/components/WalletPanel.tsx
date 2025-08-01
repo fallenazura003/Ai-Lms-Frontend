@@ -18,6 +18,9 @@ export function WalletPanel({ open, onOpenChange, onSuccess }: WalletPanelProps)
     const [loading, setLoading] = useState(false);
 
     const handleTopUp = async () => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('pre_transaction_url', window.location.pathname);
+        }
         const numericAmount = parseFloat(amount);
         if (isNaN(numericAmount) || numericAmount <= 0) {
             toast.error('Vui lòng nhập số tiền hợp lệ.');
@@ -26,16 +29,18 @@ export function WalletPanel({ open, onOpenChange, onSuccess }: WalletPanelProps)
 
         setLoading(true);
         try {
-            const res = await api.post('/wallet/top-up', { amount: numericAmount });
+            // Gửi yêu cầu nạp tiền đến backend
+            const res = await api.post('/wallet/top-up', {
+                amount: numericAmount,
+            });
 
-            toast.success(res.data.message || 'Nạp tiền thành công');
-
-            if (res.data.data !== undefined) {
-                onSuccess(res.data.data); // truyền balance mới
+            // Backend sẽ trả về một URL Checkout Session từ Stripe
+            if (res.data.data) {
+                // Chuyển hướng người dùng đến trang thanh toán của Stripe
+                window.location.href = res.data.data;
+            } else {
+                toast.error('Không thể tạo yêu cầu thanh toán. Vui lòng thử lại.');
             }
-
-            onOpenChange(false); // đóng dialog sau toast
-            setAmount('');
         } catch (err: any) {
             toast.error(err.response?.data?.message || 'Nạp tiền thất bại');
         } finally {
@@ -45,7 +50,7 @@ export function WalletPanel({ open, onOpenChange, onSuccess }: WalletPanelProps)
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[95%] sm:max-w-lg"> {/* ✅ Điều chỉnh max-width cho mobile nhỏ */}
+            <DialogContent className="max-w-[95%] sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Nạp tiền vào ví</DialogTitle>
                 </DialogHeader>
@@ -55,10 +60,10 @@ export function WalletPanel({ open, onOpenChange, onSuccess }: WalletPanelProps)
                         placeholder="Nhập số tiền"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        className="w-full" // ✅ Đảm bảo input chiếm đủ chiều rộng
+                        className="w-full"
                     />
-                    <Button onClick={handleTopUp} disabled={loading} className="w-full"> {/* ✅ Đảm bảo nút chiếm đủ chiều rộng */}
-                        {loading ? 'Đang xử lý...' : 'Xác nhận'}
+                    <Button onClick={handleTopUp} disabled={loading} className="w-full">
+                        {loading ? 'Đang xử lý...' : 'Nạp tiền bằng Stripe'}
                     </Button>
                 </div>
             </DialogContent>

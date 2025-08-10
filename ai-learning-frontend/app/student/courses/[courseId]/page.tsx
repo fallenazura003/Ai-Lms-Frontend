@@ -1,6 +1,5 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,12 @@ import api from '@/lib/api';
 import Image from 'next/image';
 import { DollarSign, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/store/auth';
-
+import { useProgressStore } from '@/store/useProgressStore';
 import LessonListSidebar from '@/components/lesson/LessonListSidebar';
 import LessonContent from '@/components/lesson/LessonContent';
 import CourseLoading from '@/components/course/CourseLoading';
 import CourseCommentSection from '@/components/course/CourseCommentSection';
-import { WalletPanel } from '@/components/WalletPanel'; // ✅ Thêm dòng này
+import { WalletPanel } from '@/components/WalletPanel';
 import { useBalanceStore } from '@/store/balance';
 
 interface LessonResponse {
@@ -48,7 +47,7 @@ interface CourseDetail {
 
 export default function CourseDetailPage() {
     const { courseId } = useParams();
-    const { role } = useAuth();
+    const { role, userId } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const isTeacherPreview = pathname.startsWith('/teacher/courses');
@@ -60,13 +59,9 @@ export default function CourseDetailPage() {
     const [buying, setBuying] = useState(false);
     const [hasPurchased, setHasPurchased] = useState(false);
 
-
-
+    const { progressList, fetchProgress } = useProgressStore();
     const { balance, setBalance, fetchBalance } = useBalanceStore((state) => state);
-
-
-
-    const [walletOpen, setWalletOpen] = useState(false); // ✅ Biến mở popup ví
+    const [walletOpen, setWalletOpen] = useState(false);
 
     const fetchLessons = async (cid: string) => {
         try {
@@ -96,14 +91,11 @@ export default function CourseDetailPage() {
                 let courseApiUrl = '';
                 let shouldFetchLessons = false;
 
-                // Nếu là học sinh => gọi API mua và gọi luôn fetchBalance
                 if (role === 'STUDENT') {
                     courseApiUrl = `/student/courses/${courseId}`;
                     const purchasedRes = await api.get<boolean>(`/student/enrolled/${courseId}`);
                     setHasPurchased(purchasedRes.data);
                     shouldFetchLessons = purchasedRes.data;
-
-                    // ✅ Tự động gọi số dư mỗi khi vào trang học sinh
                     await fetchBalance();
                 } else if (role === 'TEACHER' && isTeacherPreview) {
                     courseApiUrl = `/teacher/courses/${courseId}/preview`;
@@ -129,6 +121,18 @@ export default function CourseDetailPage() {
 
         fetchCourseData();
     }, [courseId, role, isTeacherPreview]);
+
+    // ✅ Thêm useEffect để fetchProgress khi userId có sẵn
+    useEffect(() => {
+        fetchProgress();
+    }, [ fetchProgress]);
+
+    // ✅ Cập nhật logic tìm kiếm courseProgress
+    const courseProgress = progressList.find(p => p.course?.id === course?.id);
+
+    const percent = courseProgress && courseProgress.totalLessons > 0
+        ? Math.round((courseProgress.completedLessons / courseProgress.totalLessons) * 100)
+        : 0;
 
 
     const handleBuy = async () => {
@@ -203,6 +207,15 @@ export default function CourseDetailPage() {
                             <h1 className="text-3xl font-bold text-gray-800">{course.title}</h1>
                             <p className="text-gray-600 mt-2">Tác giả: {course.creatorName}</p>
                         </div>
+                        {/* Progress bar nhỏ giống Udemy */}
+                        {courseProgress && (
+                            <div className="ml-6 w-48">
+                                <div className="text-sm font-medium text-gray-700 mb-1">{percent}% hoàn thành</div>
+                                <div className="w-full bg-gray-200 h-2 rounded">
+                                    <div style={{ width: `${percent}%` }} className="h-2 bg-green-500 rounded"></div>
+                                </div>
+                            </div>
+                        )}
 
                         {role === 'STUDENT' && !hasPurchased && (
                             <Button
@@ -238,34 +251,25 @@ export default function CourseDetailPage() {
                         />
                     </div>
 
-                    {!hasPurchased && role === 'STUDENT' && (
-                        <div className="mb-6 text-xl text-green-600 font-bold flex items-center gap-2">
-                            <DollarSign className="w-5 h-5" />
-                            {course.price === 0 ? 'Miễn phí' : `${course.price} VNĐ`}
+                    {!hasPurchased && role === 'STUDENT' ? (
+                        <div className="p-8 text-center bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
+                            <h3 className="text-xl font-semibold mb-2">Mua khóa học để truy cập các bài học</h3>
+                            <p>Hãy mua khóa học này để mở khóa tất cả các bài học và bắt đầu hành trình học tập của bạn!</p>
                         </div>
-                    )}
-
-                    <p className="text-gray-700 whitespace-pre-line mb-8">{course.description}</p>
-
-                    {hasPurchased ? (
+                    ) : (
                         <LessonContent
                             lesson={activeLesson}
                             onNextLesson={handleNextLesson}
                             onPreviousLesson={handlePreviousLesson}
                             hasNextLesson={hasNextLesson}
                             hasPreviousLesson={hasPreviousLesson}
+                            progressList={progressList} // ✅ Truyền prop progressList vào đây
                         />
-                    ) : (
-                        <div className="p-8 text-center bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
-                            <h3 className="text-xl font-semibold mb-2">Mua khóa học để truy cập các bài học</h3>
-                            <p>Hãy mua khóa học này để mở khóa tất cả các bài học và bắt đầu hành trình học tập của bạn!</p>
-                        </div>
                     )}
                 </div>
 
                 <CourseCommentSection courseId={course.id} />
 
-                {/* ✅ WalletPanel để nạp tiền khi không đủ */}
                 <WalletPanel
                     open={walletOpen}
                     onOpenChange={setWalletOpen}

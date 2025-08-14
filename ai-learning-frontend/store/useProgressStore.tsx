@@ -1,13 +1,14 @@
 import { create } from "zustand";
 import api from "@/lib/api";
 
-interface ProgressItem {
+export interface ProgressItem {
     id: string;
-    student?: any;
-    course?: { id: string; title?: string };
+    courseId: string;
+    courseTitle: string;
     completedLessons: number;
     totalLessons: number;
-    status: string;
+    percent: number;
+    status: "IN_PROGRESS" | "COMPLETED";
     completedLessonIds: string[];
 }
 
@@ -15,7 +16,8 @@ type ProgressState = {
     progressList: ProgressItem[];
     fetchProgress: () => Promise<void>;
     fetchProgressByCourse: (courseId: string) => Promise<ProgressItem | null>;
-    completeLesson: (courseId: string, lessonId: string) => Promise<void>;
+    completeLesson: (courseId: string, lessonId: string) => Promise<ProgressItem | null>;
+    // Đã xóa hàm getResumeLesson
 };
 
 export const useProgressStore = create<ProgressState>((set, get) => ({
@@ -47,21 +49,26 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
                 params: { courseId, lessonId },
             });
 
-            const updatedProgress: ProgressItem = res.data;
+            const updated: ProgressItem = res.data;
+
+            // ✅ Cập nhật list trong store ngay lập tức
             set((state) => {
-                const idx = state.progressList.findIndex(
-                    (p) => p.course?.id === updatedProgress.course?.id
-                );
+                const idx = state.progressList.findIndex(p => p.courseId === updated.courseId);
                 const newList = [...state.progressList];
                 if (idx !== -1) {
-                    newList[idx] = updatedProgress;
+                    newList[idx] = updated;
                 } else {
-                    newList.unshift(updatedProgress);
+                    newList.unshift(updated);
                 }
                 return { progressList: newList };
             });
+
+            return updated;
         } catch (error) {
             console.error("❌ Lỗi khi hoàn thành bài học:", error);
+            return null;
         }
     },
+
+    // Đã xóa hàm getResumeLesson
 }));

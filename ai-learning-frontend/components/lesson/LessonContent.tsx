@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,10 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import YouTubePlayer from '@/components/lesson/YoutubePlayer';
-import MCQViewer from "@/components/lesson/MCQViewer";
+import MCQViewer from '@/components/lesson/MCQViewer';
 import { useProgressStore } from '@/store/useProgressStore';
 import { useAuth } from '@/store/auth';
+import CourseProgressBar from '@/components/CourseProgressBar'; // Đã thêm import
 
 interface LessonResponse {
     id: string;
@@ -30,13 +32,12 @@ interface LessonResponse {
     courseId?: string;
 }
 
-interface LessonContentProps {
+export interface LessonContentProps {
     lesson: LessonResponse | null;
-    onNextLesson?: () => void;
-    onPreviousLesson?: () => void;
+    onNextLesson: () => void;
+    onPreviousLesson: () => void;
     hasNextLesson: boolean;
     hasPreviousLesson: boolean;
-    progressList: any[];
 }
 
 function LessonContent({
@@ -45,21 +46,26 @@ function LessonContent({
                            onPreviousLesson,
                            hasNextLesson,
                            hasPreviousLesson,
-                           progressList,
                        }: LessonContentProps) {
     const topRef = useRef<HTMLDivElement>(null);
-    const { completeLesson } = useProgressStore();
-    const { userId: studentId, role } = useAuth();
+    const { completeLesson, fetchProgressByCourse } = useProgressStore();
+    const { role } = useAuth();
     const [isCurrentLessonCompleted, setIsCurrentLessonCompleted] = useState<boolean>(false);
 
-    // ✅ Sử dụng useEffect để cập nhật trạng thái khi progressList hoặc lesson thay đổi
+    // cập nhật trạng thái hoàn thành của bài hiện tại
     useEffect(() => {
-        if (lesson?.id && progressList) {
-            const courseProgress = progressList.find(p => p.course?.id === lesson.courseId);
-            const isCompleted = courseProgress?.completedLessonIds?.includes(lesson.id);
-            setIsCurrentLessonCompleted(!!isCompleted);
-        }
-    }, [progressList, lesson?.id, lesson?.courseId]);
+        const checkCompletion = async () => {
+            if (lesson?.id && lesson?.courseId) {
+                const courseProgress = await fetchProgressByCourse(lesson.courseId);
+                const isCompleted = courseProgress?.completedLessonIds?.includes(lesson.id);
+                setIsCurrentLessonCompleted(!!isCompleted);
+            } else {
+                setIsCurrentLessonCompleted(false);
+            }
+        };
+
+        checkCompletion();
+    }, [lesson?.id, lesson?.courseId, fetchProgressByCourse]);
 
     useEffect(() => {
         if (topRef.current) {
@@ -78,11 +84,18 @@ function LessonContent({
     const handleCompleteLesson = async () => {
         if (lesson?.courseId && lesson?.id) {
             await completeLesson(lesson.courseId, lesson.id);
+            // Sau khi hoàn thành, cập nhật trạng thái
+            const courseProgress = await fetchProgressByCourse(lesson.courseId);
+            const isCompleted = courseProgress?.completedLessonIds?.includes(lesson.id);
+            setIsCurrentLessonCompleted(!!isCompleted);
         }
     };
 
     return (
         <div ref={topRef} className="space-y-6 sm:space-y-8 pb-10 px-4 md:px-0">
+            {/* ✅ Thanh tiến độ khóa học ngay bên trong trang nội dung */}
+            <CourseProgressBar courseId={lesson.courseId as string} />
+
             <h1 className="font-extrabold text-3xl sm:text-4xl lg:text-5xl text-blue-900 text-center mb-6 sm:mb-10 leading-tight">
                 {lesson.title}
             </h1>
@@ -145,7 +158,7 @@ function LessonContent({
                 </Card>
             )}
 
-            {/* Bước 4: Câu hỏi trắc nghiệm (MCQViewer đã xử lý) */}
+            {/* Bước 4: Câu hỏi trắc nghiệm */}
             {lesson.multipleChoice && (
                 <Card className="border-l-4 border-blue-600 shadow-lg">
                     <CardHeader>
@@ -154,10 +167,7 @@ function LessonContent({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 sm:p-6">
-                        <MCQViewer
-                            data={lesson.multipleChoice}
-                            lessonId={lesson.id}
-                        />
+                        <MCQViewer data={lesson.multipleChoice} lessonId={lesson.id} />
                     </CardContent>
                 </Card>
             )}

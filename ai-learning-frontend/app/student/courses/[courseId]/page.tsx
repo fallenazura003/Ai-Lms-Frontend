@@ -1,5 +1,6 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -24,11 +25,6 @@ interface LessonResponse {
     shortAnswer: string;
     multipleChoice: string;
     summaryTask: string;
-    isRecallQuestionCompleted?: boolean;
-    isMaterialCompleted?: boolean;
-    isShortAnswerCompleted?: boolean;
-    isMultipleChoiceCompleted?: boolean;
-    isSummaryTaskCompleted?: boolean;
     isLessonCompleted: boolean;
     courseId: string;
     lessonOrder: number;
@@ -58,32 +54,30 @@ export default function CourseDetailPage() {
     const [loading, setLoading] = useState(true);
     const [buying, setBuying] = useState(false);
     const [hasPurchased, setHasPurchased] = useState(false);
-
-    const { progressList, fetchProgress } = useProgressStore();
-    const { balance, setBalance, fetchBalance } = useBalanceStore((state) => state);
     const [walletOpen, setWalletOpen] = useState(false);
 
-    const fetchLessons = async (cid: string) => {
+    const { fetchProgress, fetchProgressByCourse } = useProgressStore();
+    const { setBalance, fetchBalance } = useBalanceStore();
+
+    const fetchLessons = useCallback(async (cid: string) => {
         try {
             const basePath = isTeacherPreview ? '/teacher' : '/student';
             const res = await api.get(`${basePath}/courses/${cid}/lessons`);
             setLessons(res.data);
+
             if (res.data.length > 0) {
-                const currentActive = res.data.find((l: LessonResponse) => l.id === activeLessonId);
-                if (!currentActive) {
-                    setActiveLessonId(res.data[0].id);
-                }
+                // Luôn bắt đầu từ bài học đầu tiên
+                setActiveLessonId(res.data[0].id);
             } else {
                 setActiveLessonId(null);
             }
         } catch (err: any) {
             toast.error(err.response?.data?.message || 'Không thể tải danh sách bài học');
         }
-    };
+    }, [isTeacherPreview]);
 
     useEffect(() => {
-        if (!courseId || typeof courseId !== 'string') return;
-        if (!role) return;
+        if (!courseId || typeof courseId !== 'string' || !role) return;
 
         const fetchCourseData = async () => {
             setLoading(true);
@@ -120,30 +114,21 @@ export default function CourseDetailPage() {
         };
 
         fetchCourseData();
-    }, [courseId, role, isTeacherPreview]);
+    }, [courseId, role, isTeacherPreview, fetchLessons, fetchBalance]);
 
-    // ✅ Thêm useEffect để fetchProgress khi userId có sẵn
     useEffect(() => {
-        fetchProgress();
-    }, [ fetchProgress]);
-
-    // ✅ Cập nhật logic tìm kiếm courseProgress
-    const courseProgress = progressList.find(p => p.course?.id === course?.id);
-
-    const percent = courseProgress && courseProgress.totalLessons > 0
-        ? Math.round((courseProgress.completedLessons / courseProgress.totalLessons) * 100)
-        : 0;
-
+        if (userId) fetchProgress();
+    }, [userId, fetchProgress]);
 
     const handleBuy = async () => {
         if (!course) return;
         setBuying(true);
         try {
             const res = await api.post('/student/purchase', { courseId: course.id });
-
             toast.success(res.data.message || 'Đã mua khóa học thành công!');
             setHasPurchased(true);
             await fetchLessons(course.id);
+            await fetchProgressByCourse(course.id);
 
             if (res.data.data?.balance !== undefined) {
                 setBalance(res.data.data.balance);
@@ -152,7 +137,7 @@ export default function CourseDetailPage() {
             }
         } catch (err: any) {
             const message = err.response?.data?.message || 'Mua khóa học thất bại';
-            if (message.includes('Số dư không đủ để mua khóa học này.')) {
+            if (message.includes('Số dư không đủ')) {
                 toast.error('❌ Số dư không đủ để mua khóa học này.');
                 setTimeout(() => setWalletOpen(true), 300);
             } else {
@@ -163,29 +148,19 @@ export default function CourseDetailPage() {
         }
     };
 
-
-    const getFullImageUrl = (path: string | undefined | null) => {
-        if (!path || path.trim() === '') {
+    const getFullImageUrl = (path?: string | null) => {
+        if (!path?.trim()) {
             return 'https://foundr.com/wp-content/uploads/2021/09/Best-online-course-platforms.png';
         }
-        if (path.startsWith('/uploads/')) {
-            return `http://localhost:8080${path}`;
-        }
-        return path;
+        return path.startsWith('/uploads/')
+            ? `http://localhost:8080${path}`
+            : path;
     };
 
     const activeLesson = lessons.find((l) => l.id === activeLessonId) || null;
     const activeLessonIndex = lessons.findIndex((l) => l.id === activeLessonId);
     const hasPreviousLesson = activeLessonIndex > 0;
     const hasNextLesson = activeLessonIndex < lessons.length - 1;
-
-    const handleNextLesson = () => {
-        if (hasNextLesson) setActiveLessonId(lessons[activeLessonIndex + 1].id);
-    };
-
-    const handlePreviousLesson = () => {
-        if (hasPreviousLesson) setActiveLessonId(lessons[activeLessonIndex - 1].id);
-    };
 
     if (loading) return <CourseLoading />;
     if (!course) return <div className="p-6 text-center text-red-600">Không tìm thấy khóa học.</div>;
@@ -207,15 +182,6 @@ export default function CourseDetailPage() {
                             <h1 className="text-3xl font-bold text-gray-800">{course.title}</h1>
                             <p className="text-gray-600 mt-2">Tác giả: {course.creatorName}</p>
                         </div>
-                        {/* Progress bar nhỏ giống Udemy */}
-                        {courseProgress && (
-                            <div className="ml-6 w-48">
-                                <div className="text-sm font-medium text-gray-700 mb-1">{percent}% hoàn thành</div>
-                                <div className="w-full bg-gray-200 h-2 rounded">
-                                    <div style={{ width: `${percent}%` }} className="h-2 bg-green-500 rounded"></div>
-                                </div>
-                            </div>
-                        )}
 
                         {role === 'STUDENT' && !hasPurchased && (
                             <Button
@@ -259,11 +225,10 @@ export default function CourseDetailPage() {
                     ) : (
                         <LessonContent
                             lesson={activeLesson}
-                            onNextLesson={handleNextLesson}
-                            onPreviousLesson={handlePreviousLesson}
+                            onNextLesson={() => hasNextLesson && setActiveLessonId(lessons[activeLessonIndex + 1].id)}
+                            onPreviousLesson={() => hasPreviousLesson && setActiveLessonId(lessons[activeLessonIndex - 1].id)}
                             hasNextLesson={hasNextLesson}
                             hasPreviousLesson={hasPreviousLesson}
-                            progressList={progressList} // ✅ Truyền prop progressList vào đây
                         />
                     )}
                 </div>
@@ -273,11 +238,8 @@ export default function CourseDetailPage() {
                 <WalletPanel
                     open={walletOpen}
                     onOpenChange={setWalletOpen}
-                    onSuccess={(newBalance) => {
-                        setBalance(newBalance);
-                    }}
+                    onSuccess={(newBalance) => setBalance(newBalance)}
                 />
-
             </main>
         </div>
     );

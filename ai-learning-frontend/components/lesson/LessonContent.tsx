@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,6 @@ import YouTubePlayer from '@/components/lesson/YoutubePlayer';
 import MCQViewer from '@/components/lesson/MCQViewer';
 import { useProgressStore } from '@/store/useProgressStore';
 import { useAuth } from '@/store/auth';
-import CourseProgressBar from '@/components/CourseProgressBar'; // Đã thêm import
 
 interface LessonResponse {
     id: string;
@@ -38,6 +37,8 @@ export interface LessonContentProps {
     onPreviousLesson: () => void;
     hasNextLesson: boolean;
     hasPreviousLesson: boolean;
+    // Thêm prop để thông báo cho component cha khi hoàn thành
+    onLessonCompleted: (lessonId: string) => void;
 }
 
 function LessonContent({
@@ -46,6 +47,7 @@ function LessonContent({
                            onPreviousLesson,
                            hasNextLesson,
                            hasPreviousLesson,
+                           onLessonCompleted,
                        }: LessonContentProps) {
     const topRef = useRef<HTMLDivElement>(null);
     const { completeLesson, fetchProgressByCourse } = useProgressStore();
@@ -83,19 +85,21 @@ function LessonContent({
 
     const handleCompleteLesson = async () => {
         if (lesson?.courseId && lesson?.id) {
-            await completeLesson(lesson.courseId, lesson.id);
-            // Sau khi hoàn thành, cập nhật trạng thái
-            const courseProgress = await fetchProgressByCourse(lesson.courseId);
-            const isCompleted = courseProgress?.completedLessonIds?.includes(lesson.id);
-            setIsCurrentLessonCompleted(!!isCompleted);
+            // Gọi API hoàn thành bài học
+            const updatedProgress = await completeLesson(lesson.courseId, lesson.id);
+            if (updatedProgress) {
+                // Gọi hàm prop để thông báo cho component cha
+                onLessonCompleted(lesson.id);
+                // Cập nhật trạng thái hoàn thành của bài học hiện tại
+                const isCompleted = updatedProgress?.completedLessonIds?.includes(lesson.id);
+                setIsCurrentLessonCompleted(!!isCompleted);
+            }
         }
     };
 
     return (
         <div ref={topRef} className="space-y-6 sm:space-y-8 pb-10 px-4 md:px-0">
-            {/* ✅ Thanh tiến độ khóa học ngay bên trong trang nội dung */}
-            <CourseProgressBar courseId={lesson.courseId as string} />
-
+            {/* Loại bỏ CourseProgressBar khỏi đây để tránh lỗi và tập trung vào luồng dữ liệu chính */}
             <h1 className="font-extrabold text-3xl sm:text-4xl lg:text-5xl text-blue-900 text-center mb-6 sm:mb-10 leading-tight">
                 {lesson.title}
             </h1>

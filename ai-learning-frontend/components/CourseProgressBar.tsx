@@ -1,24 +1,12 @@
 'use client';
-import { useEffect, useState } from "react";
-import { useProgressStore, ProgressItem } from "@/store/useProgressStore";
-import { useAuth } from '@/store/auth';
+import { ProgressItem } from "@/store/useProgressStore";
 
-export default function CourseProgressBar({ courseId }: { courseId: string }) {
-    const { fetchProgressByCourse } = useProgressStore();
-    const { role } = useAuth();
-    const [progress, setProgress] = useState<ProgressItem | null>(null);
+interface CourseProgressBarProps {
+    // Đã thay đổi prop nhận vào
+    progress: ProgressItem | null;
+}
 
-    useEffect(() => {
-        const fetchProgressData = async () => {
-            const p = await fetchProgressByCourse(courseId);
-            if (p) setProgress(p);
-        };
-
-        if (role === 'STUDENT') {
-            fetchProgressData();
-        }
-    }, [courseId, fetchProgressByCourse, role]);
-
+export default function CourseProgressBar({ progress }: CourseProgressBarProps) {
     const percent = progress?.totalLessons
         ? Math.round((progress.completedLessons / progress.totalLessons) * 100)
         : 0;
@@ -26,7 +14,7 @@ export default function CourseProgressBar({ courseId }: { courseId: string }) {
     return (
         <div className="border p-3 rounded mb-4 bg-white shadow-sm">
             <h3 className="font-bold text-lg text-gray-800">Tiến độ khóa học</h3>
-            {progress && (
+            {progress ? (
                 <>
                     <p className="text-gray-600 my-2">
                         {progress.completedLessons}/{progress.totalLessons} bài học ({percent}%)
@@ -37,10 +25,9 @@ export default function CourseProgressBar({ courseId }: { courseId: string }) {
                         max={progress.totalLessons}
                     ></progress>
                 </>
+            ) : (
+                <p className="text-gray-500 italic">Khóa học này chưa có tiến độ.</p>
             )}
-            {!progress && <p className="text-gray-500 italic">Khóa học này chưa có tiến độ.</p>}
-
-            {/* Đã xóa phần "Tiếp tục học" */}
         </div>
     );
 }

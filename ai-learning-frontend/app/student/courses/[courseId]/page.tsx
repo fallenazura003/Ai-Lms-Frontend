@@ -8,13 +8,14 @@ import api from '@/lib/api';
 import Image from 'next/image';
 import { DollarSign, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/store/auth';
-import { useProgressStore } from '@/store/useProgressStore';
+import { useProgressStore, ProgressItem } from '@/store/useProgressStore';
 import LessonListSidebar from '@/components/lesson/LessonListSidebar';
 import LessonContent from '@/components/lesson/LessonContent';
 import CourseLoading from '@/components/course/CourseLoading';
 import CourseCommentSection from '@/components/course/CourseCommentSection';
 import { WalletPanel } from '@/components/WalletPanel';
 import { useBalanceStore } from '@/store/balance';
+import CourseProgressBar from '@/components/CourseProgressBar';
 
 interface LessonResponse {
     id: string;
@@ -55,9 +56,17 @@ export default function CourseDetailPage() {
     const [buying, setBuying] = useState(false);
     const [hasPurchased, setHasPurchased] = useState(false);
     const [walletOpen, setWalletOpen] = useState(false);
+    const [courseProgress, setCourseProgress] = useState<ProgressItem | null>(null);
 
-    const { fetchProgress, fetchProgressByCourse } = useProgressStore();
+    const { completeLesson, fetchProgress, fetchProgressByCourse } = useProgressStore();
     const { setBalance, fetchBalance } = useBalanceStore();
+
+    const fetchCourseProgress = useCallback(async (cid: string) => {
+        if (role === 'STUDENT') {
+            const progressData = await fetchProgressByCourse(cid);
+            setCourseProgress(progressData);
+        }
+    }, [role, fetchProgressByCourse]);
 
     const fetchLessons = useCallback(async (cid: string) => {
         try {
@@ -105,6 +114,7 @@ export default function CourseDetailPage() {
 
                 if (shouldFetchLessons) {
                     await fetchLessons(courseId);
+                    await fetchCourseProgress(courseId);
                 }
             } catch (err: any) {
                 toast.error(err.response?.data?.message || 'Không thể tải khóa học.');
@@ -114,7 +124,7 @@ export default function CourseDetailPage() {
         };
 
         fetchCourseData();
-    }, [courseId, role, isTeacherPreview, fetchLessons, fetchBalance]);
+    }, [courseId, role, isTeacherPreview, fetchLessons, fetchBalance, fetchCourseProgress]);
 
     useEffect(() => {
         if (userId) fetchProgress();
@@ -128,7 +138,7 @@ export default function CourseDetailPage() {
             toast.success(res.data.message || 'Đã mua khóa học thành công!');
             setHasPurchased(true);
             await fetchLessons(course.id);
-            await fetchProgressByCourse(course.id);
+            await fetchCourseProgress(course.id);
 
             if (res.data.data?.balance !== undefined) {
                 setBalance(res.data.data.balance);
@@ -147,6 +157,16 @@ export default function CourseDetailPage() {
             setBuying(false);
         }
     };
+
+    // Thêm hàm callback để nhận thông tin từ LessonContent
+    const handleLessonCompleted = useCallback(async (lessonId: string) => {
+        if (!courseId) return;
+        // Gọi lại hàm fetch để cập nhật tiến độ
+        const updatedProgress = await fetchProgressByCourse(courseId as string);
+        if (updatedProgress) {
+            setCourseProgress(updatedProgress);
+        }
+    }, [courseId, fetchProgressByCourse]);
 
     const getFullImageUrl = (path?: string | null) => {
         if (!path?.trim()) {
@@ -208,6 +228,13 @@ export default function CourseDetailPage() {
                         )}
                     </div>
 
+                    {hasPurchased && role === 'STUDENT' && courseId && (
+                        <div className="mb-6">
+                            {/* Truyền prop progress vào CourseProgressBar */}
+                            <CourseProgressBar progress={courseProgress} />
+                        </div>
+                    )}
+
                     <div className="relative w-full h-[300px] rounded overflow-hidden mb-6">
                         <Image
                             src={getFullImageUrl(course.imageUrl)}
@@ -227,6 +254,7 @@ export default function CourseDetailPage() {
                             lesson={activeLesson}
                             onNextLesson={() => hasNextLesson && setActiveLessonId(lessons[activeLessonIndex + 1].id)}
                             onPreviousLesson={() => hasPreviousLesson && setActiveLessonId(lessons[activeLessonIndex - 1].id)}
+                            onLessonCompleted={handleLessonCompleted}
                             hasNextLesson={hasNextLesson}
                             hasPreviousLesson={hasPreviousLesson}
                         />

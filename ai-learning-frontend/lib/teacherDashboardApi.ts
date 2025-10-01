@@ -31,29 +31,20 @@ export interface PageResponse<T> {
     totalElements: number;
     number: number; // current page number (0-indexed)
     size: number;
-    // Thêm các thuộc tính khác của Spring Page nếu cần dùng ở frontend
-    // first: boolean;
-    // last: boolean;
-    // empty: boolean;
-    // numberOfElements: number;
-    // pageable: {
-    //     pageNumber: number;
-    //     pageSize: number;
-    //     sort: {
-    //         empty: boolean;
-    //         sorted: boolean;
-    //         unsorted: boolean;
-    //     };
-    //     offset: number;
-    //     paged: boolean;
-    //     unpaged: boolean;
-    // };
-    // sort: {
-    //     empty: boolean;
-    //     sorted: boolean;
-    //     unsorted: boolean;
-    // };
+
 }
+export interface RevenueChartDTO {
+    year: number;
+    month: number;
+    totalRevenue: number;
+    periodLabel: string;
+}
+
+export async function getRevenueChartData(): Promise<RevenueChartDTO[]> {
+    const res = await api.get<RevenueChartDTO[]>('/teacher/dashboard/revenue-chart');
+    return res.data;
+}
+
 
 export const getTeacherDashboardStats = async (): Promise<TeacherDashboardStats> => {
     const response = await api.get<TeacherDashboardStats>('/teacher/dashboard/stats');

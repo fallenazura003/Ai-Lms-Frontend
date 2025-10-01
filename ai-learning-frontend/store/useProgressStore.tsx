@@ -17,7 +17,6 @@ type ProgressState = {
     fetchProgress: () => Promise<void>;
     fetchProgressByCourse: (courseId: string) => Promise<ProgressItem | null>;
     completeLesson: (courseId: string, lessonId: string) => Promise<ProgressItem | null>;
-    // Đã xóa hàm getResumeLesson
 };
 
 export const useProgressStore = create<ProgressState>((set, get) => ({

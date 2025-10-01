@@ -122,7 +122,7 @@ export default function AddNewCourseAiDialog({
                         <div className="flex gap-2">
                             <Input id="idea" {...register('idea')} />
                             <Button type="button" onClick={handleGenerate} disabled={loadingAI}>
-                                {loadingAI ? 'Đang sinh...' : 'Tạo với AI'}
+                                {loadingAI ? 'Đang tạo...' : 'Tạo với AI'}
                             </Button>
                         </div>
                     </div>

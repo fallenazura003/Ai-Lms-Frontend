@@ -7,6 +7,7 @@ import {
     ShieldCheckIcon,
     ChartBarIcon,
     UserGroupIcon,
+    UserIcon
 } from '@heroicons/react/24/outline';
 import { LogsIcon, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
@@ -22,16 +23,19 @@ export default function Sidebar() {
     const menuItems = {
         STUDENT: [
             { href: '/student/home', icon: BookOpenIcon, label: 'Trang học của tôi' },
+            { href: '/student/profile', icon: UserIcon, label: 'Hồ sơ cá nhân' }
         ],
         TEACHER: [
             { href: '/teacher/dashboard', icon: ChartBarIcon, label: 'Tổng quan bán hàng' },
             { href: '/teacher/home', icon: ShieldCheckIcon, label: 'Quản lý khóa học' },
+            { href: '/teacher/profile', icon: UserIcon, label: 'Hồ sơ cá nhân' }
         ],
         ADMIN: [
             { href: '/admin/dashboard', icon: ChartBarIcon, label: 'Tổng quan' },
             { href: '/admin/users', icon: UserGroupIcon, label: 'Quản lý người dùng' },
             { href: '/admin/courses', icon: BookOpenIcon, label: 'Quản lý khóa học' },
-            { href: '/admin/logs', icon: LogsIcon, label: 'Quản lý log' }
+            { href: '/admin/logs', icon: LogsIcon, label: 'Quản lý log' },
+            { href: '/admin/profile', icon:UserIcon , label: 'Hồ sơ cá nhân' }
         ],
     };
 

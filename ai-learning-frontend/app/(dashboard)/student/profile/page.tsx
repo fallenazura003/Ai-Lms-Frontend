@@ -1,7 +1,7 @@
 'use client'
 import React from 'react';
 
-import {User, Mail, Shield, Zap, Badge} from 'lucide-react';
+import {User, Mail, Shield, Zap} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {useAuth} from "@/store/auth";
 

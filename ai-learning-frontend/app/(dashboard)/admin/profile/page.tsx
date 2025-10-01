@@ -24,9 +24,9 @@ const UserProfilePage: React.FC = () => {
     // Hàm hiển thị trạng thái tài khoản
     const getStatusBadge = (s: string | null) => {
         if (!s || s === 'BLOCKED') {
-            return <Badge className="bg-red-500 text-white hover:bg-red-600">Bị khóa</Badge>;
+            return <div className=" text-red-700 ">Bị khóa</div>;
         }
-        return <Badge className="bg-green-500 text-white"></Badge>;
+        return <div className="text-green-500">Hoạt động</div>;
     }
 
     // Kiểm tra thông tin người dùng
@@ -73,7 +73,9 @@ const UserProfilePage: React.FC = () => {
                         <span className="text-gray-600 font-medium flex items-center">
                             <Zap className="inline w-5 h-5 mr-2 text-yellow-500" /> Trạng thái
                         </span>
-                        {getStatusBadge(status)}
+                        <span className="font-bold text-base">
+                            {getStatusBadge(status)}
+                        </span>
                     </div>
 
                 </CardContent>

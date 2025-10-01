@@ -144,7 +144,7 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                     <div className="flex items-center justify-end text-gray-700 text-sm sm:text-base"> {/* ✅ Chỉ còn justify-end */}
                         {/* ❌ Đã bỏ phần hiển thị số bài học */}
                         <h2 className="flex items-center gap-1 sm:gap-2 text-green-600 font-semibold">
-                            <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+
                             {course.price === 0 ? 'Miễn phí' : `${course.price.toLocaleString()} VNĐ`}
                         </h2>
                     </div>

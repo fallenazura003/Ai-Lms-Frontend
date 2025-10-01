@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { toast } from 'sonner';
 
-const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 phút
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 5 phút
 
 export const useAutoLogout = () => {
     const { logout } = useAuth();

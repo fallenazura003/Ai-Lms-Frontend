@@ -223,7 +223,7 @@ export default function AddNewLessonAiDialog({
                             <Button type="button" onClick={handleGenerate} disabled={loadingAI}>
                                 {loadingAI ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang sinh...
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tạo...
                                     </>
                                 ) : (
                                     'Tạo với AI'

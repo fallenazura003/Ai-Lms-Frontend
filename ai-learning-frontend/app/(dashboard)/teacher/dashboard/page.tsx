@@ -1,4 +1,3 @@
-// app/teacher/dashboard/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,17 +6,31 @@ import {
     getDetailedPurchases,
     getCourseBuyers,
     exportPurchasesToExcel,
+    getRevenueChartData,
     TeacherDashboardStats,
     PurchaseDetail,
     BuyerDetail,
-    PageResponse // Import PageResponse
-} from '@/lib/teacherDashboardApi'; // Đảm bảo đường dẫn đúng đến file service của bạn
+    PageResponse,
+    RevenueChartDTO
+} from '@/lib/teacherDashboardApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'; // Dùng Dialog của shadcn/ui
-import { Input } from '@/components/ui/input'; // Có thể cần nếu có chức năng tìm kiếm
-import Pagination from '@/components/Pagination'; // Component phân trang của bạn
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import Pagination from '@/components/Pagination';
+
+import {
+    LineChart,
+    Line,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Legend
+} from 'recharts';
 
 export default function TeacherDashboardPage() {
     const [stats, setStats] = useState<TeacherDashboardStats>({ totalCoursesSold: 0, totalPurchases: 0, totalRevenue: 0 });
@@ -31,23 +44,25 @@ export default function TeacherDashboardPage() {
     const [currentCourseBuyers, setCurrentCourseBuyers] = useState<BuyerDetail[]>([]);
     const [loadingBuyers, setLoadingBuyers] = useState(false);
 
-    const pageSize = 10; // Kích thước trang mặc định
+    const [revenueData, setRevenueData] = useState<RevenueChartDTO[]>([]);
 
-    // --- Fetch Dashboard Stats ---
+    const pageSize = 10;
+
+    // Fetch Stats
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const statsData = await getTeacherDashboardStats();
-                setStats(statsData);
-            } catch (err) {
-                console.error('Lỗi khi tải thống kê Dashboard:', err);
-                setError('Không thể tải thống kê Dashboard. Vui lòng thử lại.');
-            }
-        };
-        fetchStats();
+        getTeacherDashboardStats()
+            .then(setStats)
+            .catch(() => setError('Không thể tải thống kê Dashboard.'));
     }, []);
 
-    // --- Fetch Detailed Purchases ---
+    // Fetch Revenue Data
+    useEffect(() => {
+        getRevenueChartData()
+            .then(setRevenueData)
+            .catch(err => console.error('Lỗi khi tải dữ liệu biểu đồ:', err));
+    }, []);
+
+    // Fetch Purchases
     const fetchPurchases = async (page: number) => {
         setLoading(true);
         setError(null);
@@ -56,9 +71,8 @@ export default function TeacherDashboardPage() {
             setPurchases(purchasesData.content);
             setCurrentPage(purchasesData.number);
             setTotalPages(purchasesData.totalPages);
-        } catch (err) {
-            console.error('Lỗi khi tải chi tiết giao dịch:', err);
-            setError('Không thể tải chi tiết giao dịch. Vui lòng thử lại.');
+        } catch {
+            setError('Không thể tải chi tiết giao dịch.');
         } finally {
             setLoading(false);
         }
@@ -68,84 +82,107 @@ export default function TeacherDashboardPage() {
         fetchPurchases(currentPage);
     }, [currentPage]);
 
-    // --- Handle Pagination Change ---
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-    };
-
-    // --- Handle View Buyers (Modal) ---
+    // Handle Buyers
     const handleViewBuyers = async (courseId: string) => {
         setOpenBuyersModal(true);
         setLoadingBuyers(true);
         try {
             const buyersData = await getCourseBuyers(courseId);
-
-            // ✅ Sắp xếp giảm dần theo ngày mua
-            const sortedBuyers = buyersData.sort((a, b) =>
-                new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
+            setCurrentCourseBuyers(
+                buyersData.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
             );
-
-            setCurrentCourseBuyers(sortedBuyers);
-        } catch (err) {
-            console.error('Lỗi khi tải danh sách người mua:', err);
         } finally {
             setLoadingBuyers(false);
         }
     };
 
-
-    // --- Handle Export Excel ---
+    // Export Excel
     const handleExportExcel = async () => {
         try {
             await exportPurchasesToExcel();
             alert('Xuất file Excel thành công!');
-        } catch (err) {
-            console.error('Lỗi khi xuất Excel:', err);
-            alert('Không thể xuất file Excel. Vui lòng thử lại.');
+        } catch {
+            alert('Không thể xuất file Excel.');
         }
     };
-
-    // --- Loading and Error States ---
-    if (loading && purchases.length === 0) { // Chỉ hiển thị loading ban đầu hoặc khi chuyển trang
-        return (
-            <div className="flex justify-center items-center h-64">
-                <p>Đang tải dữ liệu...</p> {/* Có thể thay bằng Spinner */}
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="text-center text-red-500 mt-4">
-                <p>{error}</p>
-            </div>
-        );
-    }
 
     return (
         <div className="p-6">
             <h1 className="text-3xl font-bold mb-6">Tổng quan Dashboard Giảng Viên</h1>
 
-            {/* Thẻ thống kê tổng quát */}
+            {/* Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader><CardTitle className="text-lg font-semibold text-gray-700">Tổng số khóa học đã bán</CardTitle></CardHeader>
+                <Card><CardHeader><CardTitle>Tổng số khóa học đã bán</CardTitle></CardHeader>
                     <CardContent className="text-4xl font-bold text-blue-600">{stats.totalCoursesSold}</CardContent>
                 </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader><CardTitle className="text-lg font-semibold text-gray-700">Tổng số lượt mua</CardTitle></CardHeader>
+                <Card><CardHeader><CardTitle>Tổng số lượt mua</CardTitle></CardHeader>
                     <CardContent className="text-4xl font-bold text-green-600">{stats.totalPurchases}</CardContent>
                 </Card>
-                <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader><CardTitle className="text-lg font-semibold text-gray-700">Tổng doanh thu</CardTitle></CardHeader>
+                <Card><CardHeader><CardTitle>Tổng doanh thu</CardTitle></CardHeader>
                     <CardContent className="text-4xl font-bold text-purple-600">
                         {stats.totalRevenue.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Bảng thống kê chi tiết */}
-            <div className="flex justify-between items-center mb-4">
+            {/* Revenue Chart */}
+            <div className="bg-white p-6 rounded-lg shadow-md mt-8">
+                <h2 className="text-2xl font-bold mb-4">Biểu đồ doanh thu theo tháng</h2>
+
+                <ResponsiveContainer width="100%" height={350}>
+                    <LineChart data={revenueData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="periodLabel" tick={{ fontSize: 12 }} />
+                        <YAxis
+                            tickFormatter={(value) => `${(value / 1_000_000).toFixed(1)}tr`}
+                            tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip
+                            formatter={(value: number) =>
+                                value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
+                            }
+                            labelStyle={{ fontWeight: 'bold' }}
+                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '8px' }}
+                        />
+                        <Legend verticalAlign="top" height={36} />
+                        <Line
+                            type="monotone"
+                            dataKey="totalRevenue"
+                            name="Doanh thu (VND)"
+                            stroke="#4f46e5"
+                            strokeWidth={3}
+                            dot={{ r: 5, stroke: '#4f46e5', strokeWidth: 2, fill: '#fff' }}
+                            activeDot={{ r: 7 }}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+
+                {/* Biểu đồ cột song song */}
+                <div className="mt-8">
+                    <ResponsiveContainer width="100%" height={350}>
+                        <BarChart data={revenueData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="periodLabel" tick={{ fontSize: 12 }} />
+                            <YAxis
+                                tickFormatter={(value) => `${(value / 1_000_000).toFixed(1)}tr`}
+                                tick={{ fontSize: 12 }}
+                            />
+                            <Tooltip
+                                formatter={(value: number) =>
+                                    value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
+                                }
+                                labelStyle={{ fontWeight: 'bold' }}
+                                contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '8px' }}
+                            />
+                            <Legend verticalAlign="top" height={36} />
+                            <Bar dataKey="totalRevenue" name="Doanh thu (VND)" fill="#10b981" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Purchases Table */}
+            <div className="flex justify-between items-center mb-4 mt-10">
                 <h2 className="text-2xl font-bold">Thống kê chi tiết giao dịch</h2>
                 <Button onClick={handleExportExcel}>Xuất Excel</Button>
             </div>
@@ -159,76 +196,45 @@ export default function TeacherDashboardPage() {
                         <TableHead>Email người mua</TableHead>
                         <TableHead>Giá tiền</TableHead>
                         <TableHead>Ngày mua</TableHead>
-                        <TableHead className="text-center">Chi tiết người mua</TableHead>
+                        <TableHead className="text-center">Chi tiết</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {purchases.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={7} className="text-center">
-                                Không có giao dịch mua nào.
-                            </TableCell>
+                            <TableCell colSpan={7} className="text-center">Không có giao dịch mua nào.</TableCell>
                         </TableRow>
                     ) : (
-                        purchases.map((purchase) => (
-                            <TableRow key={purchase.purchaseId}>
-                                <TableCell className="font-medium">{purchase.purchaseId.substring(0, 8)}...</TableCell>
-                                <TableCell>{purchase.courseTitle}</TableCell>
-                                <TableCell>{purchase.buyerName}</TableCell>
-                                <TableCell>{purchase.buyerEmail}</TableCell>
-                                <TableCell>{purchase.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</TableCell>
-                                <TableCell>{new Date(purchase.purchaseDate).toLocaleDateString()}</TableCell>
+                        purchases.map(p => (
+                            <TableRow key={p.purchaseId}>
+                                <TableCell>{p.purchaseId.substring(0, 8)}...</TableCell>
+                                <TableCell>{p.courseTitle}</TableCell>
+                                <TableCell>{p.buyerName}</TableCell>
+                                <TableCell>{p.buyerEmail}</TableCell>
+                                <TableCell>{p.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</TableCell>
+                                <TableCell>{new Date(p.purchaseDate).toLocaleDateString()}</TableCell>
                                 <TableCell className="text-center">
                                     <Dialog open={openBuyersModal} onOpenChange={setOpenBuyersModal}>
                                         <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm" onClick={() => handleViewBuyers(purchase.courseId)}>
-                                                Xem
-                                            </Button>
+                                            <Button size="sm" variant="outline" onClick={() => handleViewBuyers(p.courseId)}>Xem</Button>
                                         </DialogTrigger>
-                                        <DialogContent className="sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px]">
-                                            <DialogHeader>
-                                                <DialogTitle>Danh sách người mua</DialogTitle>
-                                            </DialogHeader>
-                                            {loadingBuyers ? (
-                                                <div className="flex justify-center p-4">
-                                                    <p>Đang tải người mua...</p>
-                                                </div>
-                                            ) : (
+                                        <DialogContent className="sm:max-w-[600px]">
+                                            <DialogHeader><DialogTitle>Danh sách người mua</DialogTitle></DialogHeader>
+                                            {loadingBuyers ? <p>Đang tải...</p> : (
                                                 <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead>Tên</TableHead>
-                                                            <TableHead>Email</TableHead>
-                                                            <TableHead>Ngày mua</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
+                                                    <TableHeader><TableRow>
+                                                        <TableHead>Tên</TableHead>
+                                                        <TableHead>Email</TableHead>
+                                                        <TableHead>Ngày mua</TableHead>
+                                                    </TableRow></TableHeader>
                                                     <TableBody>
-                                                        {currentCourseBuyers.length === 0 ? (
-                                                            <TableRow>
-                                                                <TableCell colSpan={3} className="text-center">
-                                                                    Không có người mua nào cho khóa học này.
-                                                                </TableCell>
+                                                        {currentCourseBuyers.map(b => (
+                                                            <TableRow key={b.userId}>
+                                                                <TableCell>{b.userName}</TableCell>
+                                                                <TableCell>{b.userEmail}</TableCell>
+                                                                <TableCell>{new Date(b.purchaseDate).toLocaleString('vi-VN')}</TableCell>
                                                             </TableRow>
-                                                        ) : (
-                                                            currentCourseBuyers.map((buyer) => (
-                                                                <TableRow key={buyer.userId}>
-                                                                    <TableCell>{buyer.userName}</TableCell>
-                                                                    <TableCell>{buyer.userEmail}</TableCell>
-                                                                    <TableCell>
-                                                                        {new Date(buyer.purchaseDate).toLocaleString('vi-VN', {
-                                                                            hour: '2-digit',
-                                                                            minute: '2-digit',
-                                                                            second: '2-digit',
-                                                                            day: '2-digit',
-                                                                            month: '2-digit',
-                                                                            year: 'numeric',
-                                                                            hour12: false
-                                                                        })}
-                                                                    </TableCell>
-
-                                                                </TableRow>
-                                                            ))
-                                                        )}
+                                                        ))}
                                                     </TableBody>
                                                 </Table>
                                             )}
@@ -243,11 +249,7 @@ export default function TeacherDashboardPage() {
 
             {totalPages > 1 && (
                 <div className="flex justify-center mt-6">
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={handlePageChange}
-                    />
+                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                 </div>
             )}
         </div>

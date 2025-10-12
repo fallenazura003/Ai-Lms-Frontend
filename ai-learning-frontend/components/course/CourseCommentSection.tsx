@@ -1,12 +1,11 @@
-// CourseCommentSection.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import api from '@/lib/api';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import api from '@/lib/api'; // ✅ Đã sửa sang alias/đường dẫn module chuẩn
+import { Textarea } from '@/components/ui/textarea'; // ✅ Đã sửa sang alias/đường dẫn module chuẩn
+import { Button } from '@/components/ui/button'; // ✅ Đã sửa sang alias/đường dẫn module chuẩn
 import { toast } from 'sonner';
-import { useAuth } from '@/store/auth';
+import { useAuth } from '@/store/auth'; // ✅ Đã sửa sang alias/đường dẫn module chuẩn
 import { Star } from 'lucide-react';
 
 interface CommentResponse {
@@ -20,7 +19,8 @@ interface CommentResponse {
     replies?: CommentResponse[];
 }
 
-export default function CourseCommentSection({ courseId }: { courseId: string }) {
+// ✅ THAY ĐỔI 1: Thêm prop isEnrolled
+export default function CourseCommentSection({ courseId, isEnrolled }: { courseId: string, isEnrolled: boolean }) {
     const { role, userId } = useAuth();
     const [comments, setComments] = useState<CommentResponse[]>([]);
     const [newComment, setNewComment] = useState('');
@@ -31,7 +31,7 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
     const [rating, setRating] = useState<number>(0);
     const [averageRating, setAverageRating] = useState<number | null>(null);
     const [alreadyRated, setAlreadyRated] = useState(false);
-    const [enrolled, setEnrolled] = useState(false);
+    // ❌ Đã loại bỏ trạng thái [enrolled, setEnrolled]
 
     const fetchComments = async () => {
         try {
@@ -66,29 +66,18 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
         }
     };
 
-    const fetchEnrollment = async () => {
-        if (role === 'STUDENT') {
-            try {
-                const res = await api.get(`/student/enrolled/${courseId}`);
-                setEnrolled(res.data);
-            } catch (err) {
-                setEnrolled(false);
-                console.error("Error fetching enrollment status:", err);
-            }
-        } else {
-            setEnrolled(true);
-        }
-    };
+    // ❌ Đã loại bỏ fetchEnrollment
 
     useEffect(() => {
         fetchComments();
         fetchRatingData();
-        fetchEnrollment();
+        // ❌ Không cần gọi fetchEnrollment nữa, vì trạng thái được lấy từ prop
     }, [courseId, role]);
 
     const handlePostComment = async () => {
         if (!newComment.trim()) return;
-        if (role === 'STUDENT' && !enrolled) {
+        // ✅ THAY ĐỔI 2: Sử dụng prop isEnrolled
+        if (role === 'STUDENT' && !isEnrolled) {
             toast.error('Bạn cần mua khóa học để bình luận');
             return;
         }
@@ -107,7 +96,8 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
 
     const handleReplySubmit = async (parentId: string) => {
         if (!replyContent.trim()) return;
-        if (role === 'STUDENT' && !enrolled) {
+        // ✅ THAY ĐỔI 3: Sử dụng prop isEnrolled
+        if (role === 'STUDENT' && !isEnrolled) {
             toast.error('Bạn cần mua khóa học để trả lời bình luận');
             return;
         }
@@ -155,7 +145,8 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
             toast.error('Chỉ học sinh mới có thể đánh giá khóa học.');
             return;
         }
-        if (!enrolled) {
+        // ✅ THAY ĐỔI 4: Sử dụng prop isEnrolled
+        if (!isEnrolled) {
             toast.error('Bạn cần mua khóa học để đánh giá.');
             return;
         }
@@ -208,12 +199,12 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                                 key={star}
                                 className={`w-5 h-5 sm:w-6 sm:h-6 cursor-pointer transition ${ // ✅ Responsive icon size
                                     rating >= star ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'
-                                } ${!enrolled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={() => enrolled && handleRate(star)}
+                                } ${!isEnrolled ? 'opacity-50 cursor-not-allowed' : ''}`} // ✅ Sử dụng isEnrolled
+                                onClick={() => isEnrolled && handleRate(star)} // ✅ Sử dụng isEnrolled
                             />
                         ))}
                     </div>
-                    {!enrolled && (
+                    {!isEnrolled && ( // ✅ Sử dụng isEnrolled
                         <div className="text-xs md:text-sm text-red-500 mt-2"> {/* ✅ Responsive font size */}
                             * Bạn cần mua khóa học để đánh giá
                         </div>
@@ -231,12 +222,12 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                         className="w-full text-sm md:text-base" // ✅ Full width và responsive font size
                         rows={3} // Giới hạn số dòng hiển thị
                     />
-                    {(role === 'STUDENT' && enrolled) || role === 'TEACHER' ? (
+                    {(role === 'STUDENT' && isEnrolled) || role === 'TEACHER' ? ( // ✅ Sử dụng isEnrolled
                         <Button className="mt-3 w-full sm:w-auto" onClick={handlePostComment}> {/* ✅ Full width trên mobile, auto trên desktop */}
                             Gửi bình luận
                         </Button>
                     ) : (
-                        role === 'STUDENT' && !enrolled && (
+                        role === 'STUDENT' && !isEnrolled && ( // ✅ Sử dụng isEnrolled
                             <div className="mt-2 text-xs md:text-sm text-red-500">
                                 * Bạn cần mua khóa học để bình luận
                             </div>
@@ -271,7 +262,7 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                             </div>
                         ) : (
                             <p className="mt-1 text-gray-700 text-sm md:text-base whitespace-pre-line">{comment.content}</p>
-                            )}
+                        )}
 
                         {canManageComment(comment.userId) && editingCommentId !== comment.id && (
                             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2"> {/* ✅ Flex wrap cho mobile */}
@@ -297,7 +288,7 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                             </div>
                         )}
 
-                        {role && (role === 'STUDENT' && enrolled) || role === 'TEACHER' ? (
+                        {role && (role === 'STUDENT' && isEnrolled) || role === 'TEACHER' ? ( // ✅ Sử dụng isEnrolled
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -329,7 +320,7 @@ export default function CourseCommentSection({ courseId }: { courseId: string })
                                     </div>
                                 ) : (
                                     <p className="text-gray-700 mt-1 text-sm md:text-base whitespace-pre-line">{reply.content}</p>
-                                    )}
+                                )}
 
                                 {canManageComment(reply.userId) && editingCommentId !== reply.id && (
                                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2"> {/* ✅ Flex wrap cho mobile */}

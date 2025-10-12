@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
-    Book, LoaderCircle, PlayCircle, Settings, DollarSign, Trash2, Edit, BookOpen,
+     LoaderCircle, PlayCircle, Settings,  Trash2, Edit, BookOpen,
     Eye, EyeOff, Star, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -170,7 +170,7 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                             isEnrolled ? (
                                 <Link href={`/student/courses/${course.id}`} passHref className="w-full">
                                     <Button className="w-full" variant="secondary">
-                                        <PlayCircle className="mr-2 h-5 w-5" /> Tiếp tục học
+                                        <PlayCircle className="mr-2 h-5 w-5" /> Vào học
                                     </Button>
                                 </Link>
                             ) : (

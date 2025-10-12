@@ -1,4 +1,3 @@
-// src/components/Header.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -29,10 +28,11 @@ export default function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // ❗️ State cho mobile menu
 
     useEffect(() => {
-        if (role === 'STUDENT' || role === 'TEACHER') {
+        // ✅ Cập nhật: Fetch balance cho cả ADMIN, TEACHER và STUDENT
+        if (role === 'STUDENT' || role === 'TEACHER' || role === 'ADMIN') {
             fetchBalance();
         }
-    }, [role]);
+    }, [role, fetchBalance]); // Thêm fetchBalance vào dependency list
 
     const handleLogout = () => {
         logout();
@@ -47,6 +47,14 @@ export default function Header() {
         else router.push('/');
         setIsMobileMenuOpen(false); // Đóng menu khi click logo
     };
+
+    // ✅ Logic kiểm tra xem có nên hiển thị số dư và nút nạp tiền không (cho ADMIN, TEACHER, STUDENT)
+    const shouldShowBalanceAndDeposit = role === 'STUDENT' || role === 'TEACHER' || role === 'ADMIN';
+
+    // ✅ Logic kiểm tra xem có nên hiển thị thanh tìm kiếm không (cho tất cả trừ ADMIN)
+    // Giả định ADMIN không cần SearchBar ở Header
+    const shouldShowSearchBar = role !== 'ADMIN';
+
 
     return (
         <header className="flex justify-between items-center px-4 py-3 bg-white shadow-md border-b border-gray-200 z-50 sticky top-0">
@@ -73,9 +81,12 @@ export default function Header() {
             </div>
 
             {/* Search Bar - Ẩn trên mobile, hiển thị trên md */}
-            <div className="hidden md:block flex-grow mx-4"> {/* `flex-grow` để nó chiếm không gian giữa */}
-                <SearchBar />
-            </div>
+            {shouldShowSearchBar && ( // ✅ Điều kiện hiển thị SearchBar
+                <div className="hidden md:block flex-grow mx-4"> {/* `flex-grow` để nó chiếm không gian giữa */}
+                    <SearchBar />
+                </div>
+            )}
+
 
             {/* User Info & Buttons for Desktop */}
             <div className="hidden md:flex items-center gap-4">
@@ -84,11 +95,12 @@ export default function Header() {
                         <NotificationBell email={user?.email || ''} />
                         <span className="text-sm text-gray-800">👤 {user?.name || 'Người dùng'}</span>
 
-                        {(role === 'STUDENT' || role === 'TEACHER') && (
+                        {shouldShowBalanceAndDeposit && ( // ✅ Điều kiện hiển thị số dư và Nạp tiền
                             <div className="flex items-center space-x-2">
                                 <span className="text-sm font-semibold text-green-600">
                                     💰 {balance !== null ? `${balance.toLocaleString()}đ` : '...'}
                                 </span>
+                                {/* Nút nạp tiền chỉ cần hiển thị, logic nạp tiền trong WalletPanel có thể giới hạn cho Teacher/Student nếu cần */}
                                 <Button variant="outline" onClick={() => setWalletOpen(true)}>
                                     Nạp tiền
                                 </Button>
@@ -123,9 +135,6 @@ export default function Header() {
                     <SheetContent side="right" className="w-[250px] sm:w-[300px]">
                         <SheetHeader>
                             <SheetTitle className="text-left">Menu</SheetTitle>
-                            {/* <SheetDescription>
-                                Điều hướng và tùy chọn tài khoản.
-                            </SheetDescription> */}
                         </SheetHeader>
                         <div className="flex flex-col gap-4 mt-6">
                             {role ? (
@@ -135,7 +144,7 @@ export default function Header() {
                                         <span className="font-semibold text-gray-800">{user?.name || 'Người dùng'}</span>
                                     </div>
 
-                                    {(role === 'STUDENT' || role === 'TEACHER') && (
+                                    {shouldShowBalanceAndDeposit && ( // ✅ Điều kiện hiển thị số dư và Nạp tiền
                                         <div className="flex items-center gap-2 text-green-600 font-semibold">
                                             <DollarSign className="h-5 w-5" />
                                             <span>{balance !== null ? `${balance.toLocaleString()}đ` : '...'}</span>
@@ -149,9 +158,11 @@ export default function Header() {
                                     )}
 
                                     {/* Mobile Search Bar - hiển thị trong menu */}
-                                    <div className="w-full">
-                                        <SearchBar />
-                                    </div>
+                                    {shouldShowSearchBar && ( // ✅ Điều kiện hiển thị SearchBar
+                                        <div className="w-full">
+                                            <SearchBar />
+                                        </div>
+                                    )}
 
                                     {/* Các nút điều hướng chính */}
                                     {role === 'ADMIN' && (
@@ -187,8 +198,9 @@ export default function Header() {
                                     <Link href="/register" passHref>
                                         <Button className="w-full" onClick={() => setIsMobileMenuOpen(false)}>Đăng ký</Button>
                                     </Link>
+                                    {/* SearchBar cho người dùng chưa đăng nhập trên mobile */}
                                     <div className="w-full mt-4">
-                                        <SearchBar /> {/* SearchBar cho người dùng chưa đăng nhập trên mobile */}
+                                        <SearchBar />
                                     </div>
                                 </div>
                             )}

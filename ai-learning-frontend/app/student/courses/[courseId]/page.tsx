@@ -96,6 +96,7 @@ export default function CourseDetailPage() {
 
                 if (role === 'STUDENT') {
                     courseApiUrl = `/student/courses/${courseId}`;
+                    // Lấy trạng thái đã mua hàng
                     const purchasedRes = await api.get<boolean>(`/student/enrolled/${courseId}`);
                     setHasPurchased(purchasedRes.data);
                     shouldFetchLessons = purchasedRes.data;
@@ -136,7 +137,11 @@ export default function CourseDetailPage() {
         try {
             const res = await api.post('/student/purchase', { courseId: course.id });
             toast.success(res.data.message || 'Đã mua khóa học thành công!');
+
+            // Cập nhật trạng thái mua hàng
             setHasPurchased(true);
+
+            // Cập nhật dữ liệu liên quan đến khóa học đã mua
             await fetchLessons(course.id);
             await fetchCourseProgress(course.id);
 
@@ -261,7 +266,11 @@ export default function CourseDetailPage() {
                     )}
                 </div>
 
-                <CourseCommentSection courseId={course.id} />
+                {/* ✅ THAY ĐỔI QUAN TRỌNG: Truyền hasPurchased làm prop isEnrolled */}
+                <CourseCommentSection
+                    courseId={course.id}
+                    isEnrolled={hasPurchased}
+                />
 
                 <WalletPanel
                     open={walletOpen}

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import api from '@/lib/api';
+import { useEffect, useState, useCallback } from 'react';
+import api from '@/lib/api'; // ✅ Đã sửa lỗi đường dẫn tương đối
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import Pagination from '@/components/Pagination';
+import Pagination from '@/components/Pagination'; // ✅ Đã sửa lỗi đường dẫn tương đối
 import { Button } from "@/components/ui/button";
+import { Input } from '@/components/ui/input';
 
 interface Event {
     id: string;
@@ -23,16 +24,36 @@ export default function AdminLogsPage() {
     const [logs, setLogs] = useState<Event[]>([]);
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [searchTerm, setSearchTerm] = useState(''); // State cho từ khóa tìm kiếm
 
-    const fetchLogs = async (page = 0) => {
+    // Sử dụng useCallback để hàm này chỉ được tạo lại khi dependencies thay đổi
+    const fetchLogs = useCallback(async (page = 0, search = searchTerm) => {
         try {
-            const res = await api.get<PageResponse<Event>>(`/admin/logs?page=${page}&size=10`);
+            const url = `/admin/logs?page=${page}&size=10${search ? `&search=${search}` : ''}`;
+            const res = await api.get<PageResponse<Event>>(url);
             setLogs(res.data.content);
             setCurrentPage(res.data.number);
             setTotalPages(res.data.totalPages);
         } catch (error) {
             console.error('Lỗi khi tải log hệ thống:', error);
         }
+    }, [searchTerm]); // Recreate fetchLogs when searchTerm changes
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            // Khi searchTerm thay đổi, reset về trang 0 và tìm kiếm
+            fetchLogs(0, searchTerm);
+        }, 500); // Debounce 500ms
+
+        // Cleanup function
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm]); // Kích hoạt tìm kiếm khi searchTerm thay đổi
+
+    // Xử lý chuyển trang
+    const handlePageChange = (page: number) => {
+        fetchLogs(page, searchTerm);
     };
 
     const handleExportExcel = async () => {
@@ -55,15 +76,20 @@ export default function AdminLogsPage() {
         }
     };
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
-
     return (
         <div className="p-6">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold">Quản lý log hệ thống</h1>
-                <Button onClick={handleExportExcel}>Xuất Excel</Button>
+                <div className="flex space-x-4">
+                    <Input
+                        type="text"
+                        placeholder="Tìm kiếm theo hành động hoặc người thực hiện..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-[300px]"
+                    />
+                    <Button onClick={handleExportExcel}>Xuất Excel</Button>
+                </div>
             </div>
 
             <Table className="bg-white shadow-md rounded-lg">
@@ -100,7 +126,7 @@ export default function AdminLogsPage() {
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
-                        onPageChange={fetchLogs}
+                        onPageChange={handlePageChange}
                     />
                 </div>
             )}

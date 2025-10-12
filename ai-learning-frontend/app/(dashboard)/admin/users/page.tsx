@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import api from '@/lib/api';
+import { useEffect, useState, useCallback } from 'react';
+import api from '@/lib/api'; // ✅ Đã sửa lỗi đường dẫn tương đối
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import Pagination from '@/components/Pagination'; // ✅ import component phân trang
+import Pagination from '@/components/Pagination'; // ✅ Đã sửa lỗi đường dẫn tương đối
+import { Input } from '@/components/ui/input';
 
 interface User {
     id: string;
@@ -26,16 +26,36 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [searchTerm, setSearchTerm] = useState(''); // State cho từ khóa tìm kiếm
 
-    const fetchUsers = async (page = 0) => {
+    // Sử dụng useCallback để hàm này chỉ được tạo lại khi dependencies thay đổi
+    const fetchUsers = useCallback(async (page = 0, search = searchTerm) => {
         try {
-            const res = await api.get<PageResponse<User>>(`/admin/users?page=${page}&size=8`);
+            const url = `/admin/users?page=${page}&size=8${search ? `&search=${search}` : ''}`;
+            const res = await api.get<PageResponse<User>>(url);
             setUsers(res.data.content);
             setCurrentPage(res.data.number);
             setTotalPages(res.data.totalPages);
         } catch (error) {
             console.error('Lỗi khi tải danh sách người dùng:', error);
         }
+    }, [searchTerm]); // Recreate fetchUsers when searchTerm changes
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            // Khi searchTerm thay đổi, reset về trang 0 và tìm kiếm
+            fetchUsers(0, searchTerm);
+        }, 500); // Debounce 500ms
+
+        // Cleanup function
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm]); // Kích hoạt tìm kiếm khi searchTerm thay đổi
+
+    // Xử lý chuyển trang
+    const handlePageChange = (page: number) => {
+        fetchUsers(page, searchTerm);
     };
 
     const toggleUserStatus = async (id: string) => {
@@ -44,19 +64,25 @@ export default function AdminUsersPage() {
 
         try {
             await api.patch(`/admin/users/${id}/status`);
-            fetchUsers(currentPage); // Refresh current page
+            fetchUsers(currentPage, searchTerm); // Refresh current page
         } catch (error) {
             console.error('Lỗi khi cập nhật trạng thái người dùng:', error);
         }
     };
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
     return (
         <div className="p-6">
-            <h1 className="text-3xl font-bold mb-6">Quản lý người dùng</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Quản lý người dùng</h1>
+                <Input
+                    type="text"
+                    placeholder="Tìm kiếm theo tên hoặc email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-[300px]"
+                />
+            </div>
+
             <Table className="bg-white shadow-md rounded-lg">
                 <TableHeader>
                     <TableRow>
@@ -93,7 +119,7 @@ export default function AdminUsersPage() {
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
-                        onPageChange={(page) => fetchUsers(page)}
+                        onPageChange={handlePageChange}
                     />
                 </div>
             )}

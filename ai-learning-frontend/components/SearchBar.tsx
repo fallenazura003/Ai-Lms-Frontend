@@ -36,7 +36,7 @@ export default function SearchBar() {
     //    - Chưa xác thực (Anonymous, tức là !isAuthenticated)
     //    - HOẶC Đã xác thực VÀ user là STUDENT (userRole === 'STUDENT')
     const shouldShowSearchBar = !isLoadingAuth && (
-        !isAuthenticated || (userRole === 'STUDENT')
+        !isAuthenticated || (userRole === 'STUDENT') || (userRole === 'TEACHER')
     );
 
     const handleSearch = () => {

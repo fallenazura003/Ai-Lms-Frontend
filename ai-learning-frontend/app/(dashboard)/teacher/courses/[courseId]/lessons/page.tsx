@@ -10,14 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrashIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import CourseLoading from '@/components/course/CourseLoading';
-import {
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import AddNewLessonAiDialog from '@/components/lesson/AddNewLessonAiDialog';
 import { LessonResponse } from '@/types/lesson'; // Import LessonResponse
 

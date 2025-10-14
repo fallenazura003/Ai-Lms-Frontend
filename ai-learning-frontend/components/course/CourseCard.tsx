@@ -1,10 +1,10 @@
-// 'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
-     LoaderCircle, PlayCircle, Settings,  Trash2, Edit, BookOpen,
-    Eye, EyeOff, Star, Tag
+    LoaderCircle, PlayCircle, Settings,  Trash2, Edit, BookOpen,
+    Eye, EyeOff, Star, Tag, BarChart3 // ✅ Import BarChart3 cho thống kê
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -33,7 +33,6 @@ interface CourseProps {
         createdAt: string;
         visible: boolean;
         category?: string;
-        // lessonCount: number; // ❌ Đã bỏ trường này khỏi interface
     };
     isEnrolled?: boolean;
     userRole?: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'ANONYMOUS' | null;
@@ -140,11 +139,9 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
                         </div>
                     )}
 
-                    {/* Price (Removed Lesson Count) */}
-                    <div className="flex items-center justify-end text-gray-700 text-sm sm:text-base"> {/* ✅ Chỉ còn justify-end */}
-                        {/* ❌ Đã bỏ phần hiển thị số bài học */}
+                    {/* Price */}
+                    <div className="flex items-center justify-end text-gray-700 text-sm sm:text-base">
                         <h2 className="flex items-center gap-1 sm:gap-2 text-green-600 font-semibold">
-
                             {course.price === 0 ? 'Miễn phí' : `${course.price.toLocaleString()} VNĐ`}
                         </h2>
                     </div>
@@ -184,6 +181,13 @@ export default function CourseCard({ course, isEnrolled, userRole, onCourseActio
 
                         {userRole === 'TEACHER' && (
                             <>
+                                {/* ✅ NÚT XEM THỐNG KÊ MỚI */}
+                                <Link href={`/teacher/courses/${course.id}/stats`} passHref className="w-full">
+                                    <Button className="w-full" variant="secondary">
+                                        <BarChart3 className="mr-2 h-5 w-5" /> Xem Thống kê
+                                    </Button>
+                                </Link>
+
                                 <Link href={`/teacher/courses/${course.id}/preview`} passHref className="w-full">
                                     <Button className="w-full" variant="secondary">
                                         <Eye className="mr-2 h-5 w-5" /> Chi tiết khóa học
